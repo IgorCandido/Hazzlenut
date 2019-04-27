@@ -3,7 +3,7 @@ package hazzlenut.twitch
 import cats.Monad
 import cats.implicits._
 import hazzlenut.errors.HazzlenutError
-import scalaz.zio.ZIO
+import scalaz.zio.{DefaultRuntime, ZIO}
 import scalaz.zio.interop.catz._
 
 case class TwitchAppCredentials(clientId: String, clientSecrete: String)
@@ -31,7 +31,7 @@ object OAuthImplicit {
 }
 
 object Authenticate{
-  def run[F[_]] (implicit oauth: OAuth[F], monad: Monad[F]) : F[String] = {
+  def run[F[_]: OAuth : Monad] : F[String] = {
     for {
       accessToken <- OAuth[F].obtainAccessToken
     } yield accessToken.token
@@ -39,10 +39,13 @@ object Authenticate{
 
 }
 
-object TestRun {
+object TestRun extends App{
   import OAuthImplicit.IOOAuth
   val result = Authenticate.run[ZIO[TwitchAppCredentials, HazzlenutError, ?]]
-  result.provide(TwitchAppCredentials("test", "test"))
+  val runtime = new DefaultRuntime {}
+  val f = runtime.unsafeRun(result.provide(TwitchAppCredentials("test", "test")))
+  println(f)
+
 }
 
 
