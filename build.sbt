@@ -17,11 +17,16 @@ val akkaHttp = "com.typesafe.akka" %% "akka-http" % "10.1.8"
 val akka = "com.typesafe.akka" %% "akka-actor" % "2.5.22"
 val akkaStream = "com.typesafe.akka" %% "akka-stream" % "2.5.22"
 val catseffect = "org.typelevel" %% "cats-effect" % "1.2.0"
-val cats = "org.typelevel" %% "cats-core" % "1.6.0"
+val cats = "org.typelevel" %% "cats-core" % "0.9.0"
 val dakatsukaOauth = "com.github.dakatsuka" %% "akka-http-oauth2-client" % "0.1.0"
 
+val circeVersion = "0.10.0"
+val circeParse =  "io.circe" %% "circe-parser" % circeVersion
+val circeCore = "io.circe" %% "circe-core" % circeVersion
+val circeGeneric = "io.circe" %% "circe-generic" % circeVersion
+
 libraryDependencies ++= Seq(cats, catseffect, scalazZIO, scalazZIOInteropCats, scalaTest, scalaCheck, akkaHttp, akkaStream, akka,
-                            dakatsukaOauth)
+                            dakatsukaOauth, circeCore, circeParse, circeGeneric)
 
 mainClass in assembly := Some("hazzlenut.Main")
 assemblyJarName in assembly := "assembly.jar"
