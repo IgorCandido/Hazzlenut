@@ -5,38 +5,72 @@ import java.net.URI
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.Uri
 import akka.stream.Materializer
-import com.github.dakatsuka.akka.http.oauth2.client.{Client, Config, GrantType}
-import hazzlenut.errors.HazzlenutError
+import cats.implicits._
 import com.github.dakatsuka.akka.http.oauth2.client.{
+  Client,
+  Config,
+  GrantType,
   AccessToken => DakatSukaAccessToken
 }
+import hazzlenut.errors.{HazzlenutError, InvalidConfiguration, ThrowableError}
 import hazzlenut.handler.AuthenticationHandler
 import hazzlenut.services.twitch.{
   AccessToken,
   Authenticate,
-  OAuth,
-  TwitchAppCredentials
+  Configuration,
+  OAuth
 }
-import cats.implicits._
+import hazzlenut.util.MapGetterValidation._
 import scalaz.zio.interop.catz._
 import scalaz.zio.{DefaultRuntime, ZIO}
 
 import scala.concurrent.{ExecutionContext, Future}
 
-object OAuthZIO {
-  implicit val IOOAuth: OAuth[ZIO[Any, HazzlenutError, ?]] =
+object TwitchZIO {
+  implicit val configurationZIO =
+    new Configuration[ZIO[Any, HazzlenutError, ?]] {
+      override def get(): ZIO[Any, HazzlenutError, Configuration.Config] = {
+        for {
+          configOrValidationError <- ZIO.succeedLazy {
+            (
+              sys.env.getMandatory("clientId"),
+              sys.env.getMandatory("clientSecret"),
+              sys.env.getMandatory("redirectUri"),
+              sys.env.getMandatory("tokenUrl"),
+              sys.env.getMandatory("authorizeUrl"),
+              sys.env.getMandatory("siteUrl"),
+              sys.env.getMandatory("scopes")
+            ).mapN(Configuration.Config.apply)
+          }
+          validConfig <- configOrValidationError.fold(
+            errors =>
+              ZIO.fail(
+                InvalidConfiguration(
+                  errors
+                    .map(e => s"${e.name}: ${e.error}")
+                    .mkString_("", ",", "")
+                )
+            ),
+            config => ZIO.succeed(config)
+          )
+        } yield validConfig
+      }
+    }
+
+  implicit val oAuthZIO: OAuth[ZIO[Any, HazzlenutError, ?]] =
     new OAuth[ZIO[Any, HazzlenutError, ?]] {
-      override def getAuthorizeUrl(credential: TwitchAppCredentials)(
+      override def getAuthorizeUrl(configuration: Configuration.Config)(
         implicit system: ActorSystem,
         ec: ExecutionContext,
         mat: Materializer
       ): ZIO[Any, HazzlenutError, Option[String]] = {
         ZIO.fromFunction { _ =>
           val config = Config(
-            clientId = credential.clientId,
-            clientSecret = credential.clientSecret,
-            site = URI.create("https://id.twitch.tv"),
-            authorizeUrl = "/oauth2/authorize"
+            clientId = configuration.clientId,
+            clientSecret = configuration.clientSecret,
+            site = URI.create(configuration.siteUrl),
+            authorizeUrl = configuration.authorizeUrl,
+            tokenUrl = configuration.tokenUrl
           )
 
           val client = new Client(config)
@@ -45,16 +79,17 @@ object OAuthZIO {
             client.getAuthorizeUrl(
               GrantType.AuthorizationCode,
               Map(
-                "redirect_uri" -> "http://localhost:8000/oauth/reply",
-                "scope" -> "channel:read:subscriptions"
+                "redirect_uri" -> configuration.redirectUri,
+                "scope" -> configuration.scopes.mkString("+")
               )
             )
 
           authorizeUrl.map(_.toString())
         }
       }
-      override def obtainAccessToken(credential: TwitchAppCredentials,
-                                     code: String)(
+
+      override def obtainAccessToken(code: String,
+                                     configuration: Configuration.Config)(
         implicit system: ActorSystem,
         ec: ExecutionContext,
         mat: Materializer
@@ -63,11 +98,11 @@ object OAuthZIO {
           .fromFuture(ec => {
             implicit val exec = ec
             val config = Config(
-              clientId = credential.clientId,
-              clientSecret = credential.clientSecret,
-              site = URI.create("https://id.twitch.tv:443"),
-              authorizeUrl = "/oauth2/authorize",
-              tokenUrl = "/oauth2/token"
+              clientId = configuration.clientId,
+              clientSecret = configuration.clientSecret,
+              site = URI.create(configuration.siteUrl),
+              authorizeUrl = configuration.authorizeUrl,
+              tokenUrl = configuration.tokenUrl
             )
 
             val client = new Client(config)
@@ -78,11 +113,11 @@ object OAuthZIO {
                   GrantType.AuthorizationCode,
                   Map(
                     "code" -> code,
-                    "redirect_uri" -> "http://localhost:8000/oauth/reply"
+                    "redirect_uri" -> configuration.redirectUri
                   )
                 )
                 .recover {
-                  case throwable => Either.left(HazzlenutError(throwable))
+                  case throwable => Either.left(ThrowableError(throwable))
                 }
 
             accessToken.map {
@@ -95,11 +130,12 @@ object OAuthZIO {
             case Right(result)   => ZIO.succeed(result)
             case Left(throwable) => ZIO.fail(throwable)
           }
-          .mapError(throwable => HazzlenutError(throwable))
+          .mapError(throwable => ThrowableError(throwable))
       }
     }
 
-  implicit val oAuthZIO = new AuthenticationHandler {
+  implicit val authHandlerZIO = new AuthenticationHandler {
+
     override def getAuthUrl(implicit system: ActorSystem,
                             ec: ExecutionContext,
                             mat: Materializer): Future[Option[String]] = {
@@ -107,14 +143,7 @@ object OAuthZIO {
       val getUrl =
         Authenticate.getUrlToAuthenticate[ZIO[Any, HazzlenutError, ?]]
 
-      runtime.unsafeRunToFuture(
-        getUrl.run(
-          TwitchAppCredentials(
-            "n9pbmipzozy0q81rn9g97ht6g61oeq",
-            "tm7s99klifle5mi05av8ffupi40x8p"
-          )
-        )
-      )
+      runtime.unsafeRunToFuture(getUrl)
     }
 
     override def obtainOAuth(code: String)(
@@ -126,10 +155,7 @@ object OAuthZIO {
       val getOAuthToken =
         Authenticate.authenticate[ZIO[Any, HazzlenutError, ?]]
 
-      runtime.unsafeRunToFuture(getOAuthToken.run((TwitchAppCredentials(
-        "n9pbmipzozy0q81rn9g97ht6g61oeq",
-        "tm7s99klifle5mi05av8ffupi40x8p"
-      ), code)))
+      runtime.unsafeRunToFuture(getOAuthToken.run(code))
     }
   }
 }
