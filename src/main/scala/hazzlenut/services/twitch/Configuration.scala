@@ -1,41 +1,44 @@
 package hazzlenut.services.twitch
 
-import cats.Monad
-import cats.data.NonEmptyList
+import cats.implicits._
+import cats.{Monad, MonadError}
 import hazzlenut.errors.{HazzlenutError, InvalidConfiguration}
 import hazzlenut.services.twitch.Configuration.Config
-import cats.implicits._
-import cats.instances.all._
 
 trait Configuration[F[_]] {
   import hazzlenut.util.MapGetterValidation._
-  def getProgram(implicit m: Monad[F]): F[Config] =
+  def get(implicit m: Monad[F],
+          mError: MonadError[F, HazzlenutError]): F[Config] =
     for {
       configOrValidationError <- pureAsync {
         (
-          sys.env.getMandatory("clientId"),
-          sys.env.getMandatory("clientSecret"),
-          sys.env.getMandatory("redirectUri"),
-          sys.env.getMandatory("tokenUrl"),
-          sys.env.getMandatory("authorizeUrl"),
-          sys.env.getMandatory("siteUrl"),
-          sys.env.getMandatory("scopes")
+          getConfig()
         ).mapN(Configuration.Config.apply)
       }
-      validConfig <- wrapError(configOrValidationError){errors =>
-        InvalidConfiguration(
-            errors
-              .map(e => s"${e.name}: ${e.error}")
-              .mkString_("", ",", "")
-          )
-        }
+      validConfig <- configOrValidationError.fold(
+        errors =>
+          mError.raiseError(
+            InvalidConfiguration(
+              errors
+                .map(e => s"${e.name}: ${e.error}")
+                .mkString_("", ",", "")
+            )
+        ),
+        config => mError.pure(config)
+      )
     } yield validConfig
 
-  def pureAsync(f: => ConfigurationValidation[Config]): F[ConfigurationValidation[Config]]
+  def pureAsync(
+    f: => ConfigurationValidation[Config]
+  ): F[ConfigurationValidation[Config]]
 
-  def wrapError(f: => ConfigurationValidation[Config])(fail: NonEmptyList[FieldError] => HazzlenutError): F[Config]
-
-  def get(): F[Config]
+  def getConfig(): (ConfigurationValidation[String],
+                    ConfigurationValidation[String],
+                    ConfigurationValidation[String],
+                    ConfigurationValidation[String],
+                    ConfigurationValidation[String],
+                    ConfigurationValidation[String],
+                    ConfigurationValidation[String])
 }
 
 object Configuration {
@@ -70,8 +73,9 @@ object Configuration {
     configuration
 
   object dsl {
-    def get[F[_]](
-      implicit configuration: Configuration[F]
+    def get[F[_]: Monad](
+      implicit configuration: Configuration[F],
+      mError: MonadError[F, HazzlenutError]
     ): F[Configuration.Config] =
       configuration.get
   }

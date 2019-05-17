@@ -5,6 +5,7 @@ import java.net.URI
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.Uri
 import akka.stream.Materializer
+import cats.data.NonEmptyList
 import cats.implicits._
 import com.github.dakatsuka.akka.http.oauth2.client.{
   Client,
@@ -29,32 +30,29 @@ import scala.concurrent.{ExecutionContext, Future}
 object TwitchZIO {
   implicit val configurationZIO =
     new Configuration[ZIO[Any, HazzlenutError, ?]] {
-      override def get(): ZIO[Any, HazzlenutError, Configuration.Config] = {
-        for {
-          configOrValidationError <- ZIO.succeedLazy {
-            (
-              sys.env.getMandatory("clientId"),
-              sys.env.getMandatory("clientSecret"),
-              sys.env.getMandatory("redirectUri"),
-              sys.env.getMandatory("tokenUrl"),
-              sys.env.getMandatory("authorizeUrl"),
-              sys.env.getMandatory("siteUrl"),
-              sys.env.getMandatory("scopes")
-            ).mapN(Configuration.Config.apply)
-          }
-          validConfig <- configOrValidationError.fold(
-            errors =>
-              ZIO.fail(
-                InvalidConfiguration(
-                  errors
-                    .map(e => s"${e.name}: ${e.error}")
-                    .mkString_("", ",", "")
-                )
-            ),
-            config => ZIO.succeed(config)
-          )
-        } yield validConfig
-      }
+
+      override def pureAsync(
+        f: => ConfigurationValidation[Configuration.Config]
+      ): ZIO[Any, HazzlenutError, ConfigurationValidation[
+        Configuration.Config
+      ]] = ZIO.succeedLazy(f)
+
+      override def getConfig(): (ConfigurationValidation[String],
+                                 ConfigurationValidation[String],
+                                 ConfigurationValidation[String],
+                                 ConfigurationValidation[String],
+                                 ConfigurationValidation[String],
+                                 ConfigurationValidation[String],
+                                 ConfigurationValidation[String]) =
+        (
+          sys.env.getMandatory("clientId"),
+          sys.env.getMandatory("clientSecret"),
+          sys.env.getMandatory("redirectUri"),
+          sys.env.getMandatory("tokenUrl"),
+          sys.env.getMandatory("authorizeUrl"),
+          sys.env.getMandatory("siteUrl"),
+          sys.env.getMandatory("scopes")
+        )
     }
 
   implicit val oAuthZIO: OAuth[ZIO[Any, HazzlenutError, ?]] =
