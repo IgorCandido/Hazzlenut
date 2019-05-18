@@ -2,13 +2,14 @@ package hazzlenut.services.twitch
 
 import cats.implicits._
 import cats.{Monad, MonadError}
-import hazzlenut.errors.{HazzlenutError, InvalidConfiguration}
+import hazzlenut.errors.HazzlenutError
+import hazzlenut.errors.HazzlenutError.{InvalidConfiguration, MonadErrorHazzlenut}
 import hazzlenut.services.twitch.Configuration.Config
 
 trait Configuration[F[_]] {
   import hazzlenut.util.MapGetterValidation._
   def get(implicit m: Monad[F],
-          mError: MonadError[F, HazzlenutError]): F[Config] =
+          mError: MonadErrorHazzlenut[F]): F[Config] =
     for {
       configOrValidationError <- pureAsync {
         (
@@ -57,7 +58,7 @@ object Configuration {
         tokenUrl = tokenUrl,
         authorizeUrl = authorizeUrl,
         siteUrl = siteUrl,
-        scopes.split('c'): _*
+        scopes.split(','): _*
       )
   }
 
@@ -73,9 +74,8 @@ object Configuration {
     configuration
 
   object dsl {
-    def get[F[_]: Monad](
-      implicit configuration: Configuration[F],
-      mError: MonadError[F, HazzlenutError]
+    def get[F[_]: Monad: MonadErrorHazzlenut](
+      implicit configuration: Configuration[F]
     ): F[Configuration.Config] =
       configuration.get
   }

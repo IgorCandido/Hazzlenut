@@ -1,29 +1,21 @@
 package utils
 import akka.actor.ActorSystem
 import akka.stream.Materializer
-import cats.{Monad, MonadError}
-import cats.data.NonEmptyList
-import hazzlenut.errors.HazzlenutError
-import hazzlenut.services.twitch.{
-  AccessToken,
-  Configuration,
-  OAuth,
-  TwitchAppCredentials
-}
-import hazzlenut.util.MapGetterValidation
-import hazzlenut.util.MapGetterValidation.ConfigurationValidation
-import cats.data.ValidatedNel
 import cats.implicits._
+import cats.{Monad, MonadError}
+import hazzlenut.errors.HazzlenutError
+import hazzlenut.services.twitch.{AccessToken, Configuration, OAuth}
+import hazzlenut.util.MapGetterValidation.ConfigurationValidation
 
 import scala.concurrent.ExecutionContext
 
-case class TestIO[A](a: Either[HazzlenutError, A])
+case class TestIO[A](result: Either[HazzlenutError, A])
 
 object TestIO {
   implicit def TestIOMonad =
     new Monad[TestIO] with MonadError[TestIO, HazzlenutError] {
       override def flatMap[A, B](fa: TestIO[A])(f: A => TestIO[B]): TestIO[B] =
-        fa.a.fold(error => TestIO(Either.left(error)), a => f(a))
+        fa.result.fold(error => TestIO(Either.left(error)), a => f(a))
       @annotation.tailrec
       override def tailRecM[A, B](
         a: A
@@ -47,22 +39,38 @@ object TestIO {
       }
     }
 
-  implicit val oAuthTestIO: OAuth[TestIO] = new OAuth[TestIO] {
-    override def getAuthorizeUrl(config: Configuration.Config)(
-      implicit system: ActorSystem,
-      ec: ExecutionContext,
-      mat: Materializer
-    ): TestIO[Option[String]] = ???
+  def oAuthTestIOWithValues(accessToken: => Either[HazzlenutError, AccessToken],
+                            getUrl: => Either[HazzlenutError, Option[String]]) =
+    new OAuth[TestIO] {
+      override def getAuthorizeUrl(config: Configuration.Config)(
+        implicit system: ActorSystem,
+        ec: ExecutionContext,
+        mat: Materializer
+      ): TestIO[Option[String]] = TestIO(getUrl)
 
-    override def obtainAccessToken(code: String, config: Configuration.Config)(
-      implicit system: ActorSystem,
-      ec: ExecutionContext,
-      mat: Materializer
-    ): TestIO[AccessToken] =
-      TestIO(Either.right(AccessToken("authed")))
-  }
+      override def obtainAccessToken(code: String,
+                                     config: Configuration.Config)(
+        implicit system: ActorSystem,
+        ec: ExecutionContext,
+        mat: Materializer
+      ): TestIO[AccessToken] =
+        TestIO(accessToken)
+    }
 
-  implicit val configurationTestIO = new Configuration[TestIO] {
+  implicit val oAuthTestIO: OAuth[TestIO] = oAuthTestIOWithValues(
+    Either.right(AccessToken("authed")),
+    Either.right("url".some)
+  )
+
+  def configurationTestIOWithValues(
+    config: (ConfigurationValidation[String],
+             ConfigurationValidation[String],
+             ConfigurationValidation[String],
+             ConfigurationValidation[String],
+             ConfigurationValidation[String],
+             ConfigurationValidation[String],
+             ConfigurationValidation[String])
+  ) = new Configuration[TestIO] {
     override def pureAsync(
       f: => ConfigurationValidation[Configuration.Config]
     ): TestIO[ConfigurationValidation[Configuration.Config]] =
@@ -74,16 +82,18 @@ object TestIO {
                                ConfigurationValidation[String],
                                ConfigurationValidation[String],
                                ConfigurationValidation[String],
-                               ConfigurationValidation[String]) =
-      (
-        "n9pbmipzozy0q81rn9g97ht6g61oeq".validNel,
-        "tm7s99klifle5mi05av8ffupi40x8p".validNel,
-        "http://localhost:8000/oauth/reply".validNel,
-        "/oauth2/token".validNel,
-        "/oauth2/authorize".validNel,
-        "https://id.twitch.tv:443".validNel,
-        "channel:read:subscriptions".validNel
-      )
-
+                               ConfigurationValidation[String]) = config
   }
+
+  implicit val configurationTestIO = configurationTestIOWithValues(
+    (
+      "f2m0fm2m02m3vm2im205m2".validNel,
+      "c2imc02mc02m0c2im0c2imc3232r".validNel,
+      "http://localhost:8000/oauth/reply".validNel,
+      "/oauth2/token".validNel,
+      "/oauth2/authorize".validNel,
+      "https://id.twitch.tv:443".validNel,
+      "channel:read:subscriptions".validNel
+    )
+  )
 }

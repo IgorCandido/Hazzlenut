@@ -1,7 +1,15 @@
 package hazzlenut.errors
 
-trait HazzlenutError extends Throwable
+import cats.MonadError
 
-case class ThrowableError(throwable: Throwable) extends HazzlenutError
+sealed trait HazzlenutError extends Throwable
 
-case class InvalidConfiguration(fieldErrors: String) extends HazzlenutError
+object HazzlenutError{
+  type MonadErrorHazzlenut[F[_]] = MonadError[F, HazzlenutError]
+
+  final case class ThrowableError(throwable: Throwable) extends HazzlenutError
+
+  final case class InvalidConfiguration(fieldErrors: String) extends HazzlenutError
+}
+
+

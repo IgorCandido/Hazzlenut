@@ -5,7 +5,6 @@ import java.net.URI
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.Uri
 import akka.stream.Materializer
-import cats.data.NonEmptyList
 import cats.implicits._
 import com.github.dakatsuka.akka.http.oauth2.client.{
   Client,
@@ -13,7 +12,8 @@ import com.github.dakatsuka.akka.http.oauth2.client.{
   GrantType,
   AccessToken => DakatSukaAccessToken
 }
-import hazzlenut.errors.{HazzlenutError, InvalidConfiguration, ThrowableError}
+import hazzlenut.errors.HazzlenutError
+import hazzlenut.errors.HazzlenutError.ThrowableError
 import hazzlenut.handler.AuthenticationHandler
 import hazzlenut.services.twitch.{
   AccessToken,

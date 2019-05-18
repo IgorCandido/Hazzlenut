@@ -6,6 +6,7 @@ import cats.{Monad, MonadError}
 import cats.data.Reader
 import cats.implicits._
 import hazzlenut.errors.HazzlenutError
+import hazzlenut.errors.HazzlenutError.MonadErrorHazzlenut
 
 import scala.concurrent.ExecutionContext
 
@@ -13,26 +14,24 @@ object Authenticate {
   import Configuration.dsl._
   import OAuth.dsl._
 
-  def getUrlToAuthenticate[F[_]: OAuth: Configuration: Monad](
+  def getUrlToAuthenticate[F[_]: OAuth: Configuration: Monad: MonadErrorHazzlenut](
     implicit system: ActorSystem,
     ec: ExecutionContext,
-    mat: Materializer,
-    mError: MonadError[F, HazzlenutError]
+    mat: Materializer
   ): F[Option[String]] =
     for {
-      config <- get(implicitly[Monad[F]], implicitly[Configuration[F]], mError)
+      config <- get[F]
       urlMaybe <- getClientRedirectUrl(config)
     } yield urlMaybe
 
-  def authenticate[F[_]: OAuth: Configuration: Monad](
+  def authenticate[F[_]: OAuth: Configuration: Monad: MonadErrorHazzlenut](
     implicit system: ActorSystem,
     ec: ExecutionContext,
-    mat: Materializer,
-    mError: MonadError[F, HazzlenutError]
+    mat: Materializer
   ): Reader[String, F[String]] = Reader {
     case code =>
       for {
-        config <- get(implicitly[Monad[F]], implicitly[Configuration[F]], mError)
+        config <- get[F]
         accessToken <- obtainAccessToken(code, config)
       } yield accessToken.token
   }
