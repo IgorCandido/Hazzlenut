@@ -1,13 +1,70 @@
 package hazzlenut.services.twitch
 
+import cats.implicits._
+import cats.{Monad, MonadError}
+import hazzlenut.errors.HazzlenutError
+import hazzlenut.errors.HazzlenutError.{InvalidConfiguration, MonadErrorHazzlenut}
 import hazzlenut.services.twitch.Configuration.Config
 
 trait Configuration[F[_]] {
-  def get(): F[Config]
+  import hazzlenut.util.MapGetterValidation._
+  def get(implicit m: Monad[F],
+          mError: MonadErrorHazzlenut[F]): F[Config] =
+    for {
+      configOrValidationError <- pureAsync {
+        (
+          getConfig()
+        ).mapN(Configuration.Config.apply)
+      }
+      validConfig <- configOrValidationError.fold(
+        errors =>
+          mError.raiseError(
+            InvalidConfiguration(
+              errors
+                .map(e => s"${e.name}: ${e.error}")
+                .mkString_("", ",", "")
+            )
+        ),
+        config => mError.pure(config)
+      )
+    } yield validConfig
+
+  def pureAsync(
+    f: => ConfigurationValidation[Config]
+  ): F[ConfigurationValidation[Config]]
+
+  def getConfig(): (ConfigurationValidation[String],
+                    ConfigurationValidation[String],
+                    ConfigurationValidation[String],
+                    ConfigurationValidation[String],
+                    ConfigurationValidation[String],
+                    ConfigurationValidation[String],
+                    ConfigurationValidation[String])
 }
 
 object Configuration {
-  case class Config(redirectUri: String,
+  object Config {
+    def apply(clientId: String,
+              clientSecret: String,
+              redirectUri: String,
+              tokenUrl: String,
+              authorizeUrl: String,
+              siteUrl: String,
+              scopes: String) =
+      new Config(
+        clientId = clientId,
+        clientSecret = clientSecret,
+        redirectUri = redirectUri,
+        tokenUrl = tokenUrl,
+        authorizeUrl = authorizeUrl,
+        siteUrl = siteUrl,
+        scopes.split(','): _*
+      )
+  }
+
+  case class Config(clientId: String,
+                    clientSecret: String,
+                    redirectUri: String,
                     tokenUrl: String,
                     authorizeUrl: String,
                     siteUrl: String,
@@ -17,7 +74,9 @@ object Configuration {
     configuration
 
   object dsl {
-    def get[F[_]](implicit configuration: Configuration[F]): F[Configuration.Config] =
+    def get[F[_]: Monad: MonadErrorHazzlenut](
+      implicit configuration: Configuration[F]
+    ): F[Configuration.Config] =
       configuration.get
   }
 }
