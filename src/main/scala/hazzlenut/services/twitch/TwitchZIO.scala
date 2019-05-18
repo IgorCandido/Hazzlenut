@@ -5,13 +5,7 @@ import java.net.URI
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.Uri
 import akka.stream.Materializer
-import cats.implicits._
-import com.github.dakatsuka.akka.http.oauth2.client.{
-  Client,
-  Config,
-  GrantType,
-  AccessToken => DakatSukaAccessToken
-}
+import com.github.dakatsuka.akka.http.oauth2.client.{Client, Config, GrantType}
 import hazzlenut.errors.HazzlenutError
 import hazzlenut.errors.HazzlenutError.ThrowableError
 import hazzlenut.handler.AuthenticationHandler
@@ -22,8 +16,8 @@ import hazzlenut.services.twitch.{
   OAuth
 }
 import hazzlenut.util.MapGetterValidation._
+import scalaz.zio.ZIO
 import scalaz.zio.interop.catz._
-import scalaz.zio.{DefaultRuntime, ZIO}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -92,6 +86,7 @@ object TwitchZIO {
         ec: ExecutionContext,
         mat: Materializer
       ): ZIO[Any, HazzlenutError, AccessToken] = {
+
         ZIO
           .fromFuture(ec => {
             implicit val exec = ec
@@ -105,8 +100,8 @@ object TwitchZIO {
 
             val client = new Client(config)
 
-            val accessToken: Future[Either[Throwable, DakatSukaAccessToken]] =
-              client
+            for {
+              accessTokenOrError <- client
                 .getAccessToken(
                   GrantType.AuthorizationCode,
                   Map(
@@ -114,15 +109,10 @@ object TwitchZIO {
                     "redirect_uri" -> configuration.redirectUri
                   )
                 )
-                .recover {
-                  case throwable => Either.left(ThrowableError(throwable))
-                }
-
-            accessToken.map {
-              case Right(accessToken) =>
-                Either.right(AccessToken(accessToken.accessToken))
-              case Left(throwable) => Either.left(throwable)
-            }
+              accessToken = accessTokenOrError.map(
+                access => AccessToken(access.accessToken)
+              )
+            } yield accessToken
           })
           .flatMap {
             case Right(result)   => ZIO.succeed(result)
@@ -133,11 +123,10 @@ object TwitchZIO {
     }
 
   implicit val authHandlerZIO = new AuthenticationHandler {
-
+    import hazzlenut.util.ZIORuntime._
     override def getAuthUrl(implicit system: ActorSystem,
                             ec: ExecutionContext,
                             mat: Materializer): Future[Option[String]] = {
-      val runtime = new DefaultRuntime {}
       val getUrl =
         Authenticate.getUrlToAuthenticate[ZIO[Any, HazzlenutError, ?]]
 
@@ -149,7 +138,6 @@ object TwitchZIO {
       ec: ExecutionContext,
       mat: Materializer
     ): Future[String] = {
-      val runtime = new DefaultRuntime {}
       val getOAuthToken =
         Authenticate.authenticate[ZIO[Any, HazzlenutError, ?]]
 

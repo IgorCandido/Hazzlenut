@@ -39,8 +39,12 @@ object TestIO {
       }
     }
 
-  def oAuthTestIOWithValues(accessToken: => Either[HazzlenutError, AccessToken],
-                            getUrl: => Either[HazzlenutError, Option[String]]) =
+  def oAuthTestIOWithValues(
+    accessToken: => Either[HazzlenutError, AccessToken] =
+      Either.right(AccessToken("token")),
+    getUrl: => Either[HazzlenutError, Option[String]] =
+      Either.right("https://www.twitch.tv/".some)
+  ) =
     new OAuth[TestIO] {
       override def getAuthorizeUrl(config: Configuration.Config)(
         implicit system: ActorSystem,

@@ -3,6 +3,7 @@ package services.twitch
 import akka.actor.ActorSystem
 import akka.stream.{ActorMaterializer, Materializer}
 import cats.implicits._
+import hazzlenut.errors.HazzlenutError.ThrowableError
 import hazzlenut.services.twitch.{AccessToken, Authenticate}
 import org.scalatest.{Matchers, WordSpec}
 import scalaz.zio.DefaultRuntime
@@ -20,10 +21,7 @@ class AuthenticateSpec extends WordSpec with Matchers {
   "Authenticate" should {
     "Succeed when OAuth url is asked" in {
       import TestIO.TestIOMonad
-      implicit val oauth = TestIO.oAuthTestIOWithValues(
-        Either.right(AccessToken("token")),
-        Either.right("https://www.twitch.tv/".some)
-      )
+      implicit val oauth = TestIO.oAuthTestIOWithValues()
       val urlTestIO = Authenticate.getUrlToAuthenticate[TestIO]
 
       urlTestIO.result.fold(
@@ -35,16 +33,49 @@ class AuthenticateSpec extends WordSpec with Matchers {
       )
     }
 
-    "Succeed when OAuth token is asked" in {
+    "Fail when OAuth url returns an error" in {
       import TestIO.TestIOMonad
       implicit val oauth = TestIO.oAuthTestIOWithValues(
-        Either.right(AccessToken("token")),
-        Either.right("https://www.twitch.tv/".some)
+        getUrl = Either.left(ThrowableError(new Exception("Error")))
       )
+      val urlTestIO = Authenticate.getUrlToAuthenticate[TestIO]
+
+      urlTestIO.result.fold(
+        error =>
+          error match {
+            case ThrowableError(exception: Exception) =>
+              exception.getMessage() should ===("Error")
+            case _ => fail("Wrong error")
+        },
+        _ => fail("Should have returned an error")
+      )
+    }
+
+    "Succeed when OAuth token is asked" in {
+      import TestIO.TestIOMonad
+      implicit val oauth = TestIO.oAuthTestIOWithValues()
       val urlTestIO = Authenticate.authenticate[TestIO].run("code")
 
       urlTestIO.result
         .fold(_ => fail("Shouldn't have failed"), _ should ===("token"))
+    }
+
+    "Fail when OAuth token is asked but an error is returned" in {
+      import TestIO.TestIOMonad
+      implicit val oauth = TestIO.oAuthTestIOWithValues(
+        accessToken = Either.left(ThrowableError(new Exception("Error")))
+      )
+      val urlTestIO = Authenticate.authenticate[TestIO].run("code")
+
+      urlTestIO.result.fold(
+        error =>
+          error match {
+            case ThrowableError(exception: Exception) =>
+              exception.getMessage() should ===("Error")
+            case _ => fail("Wrong error")
+          },
+        _ => fail("Should have returned an error")
+      )
     }
   }
 }
