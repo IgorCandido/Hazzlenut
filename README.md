@@ -3,6 +3,9 @@ Work list:
 - Create dispatcher for oauth client requests
 - Find out if we are using ExecutionContext from ZIO/Akka Http on http requests
 - Create abstraction for OAuth client? Need to find a way to enable tests of asynchronous and error handling between ZIO and future without calling the real oauth client or instead enrich the type class and test that logic (difficult cause of ZIO)
+- Renew oauth token
+- Define logic that periodically renews
+- Implement state holding of the oauth token authentication
 
 Future list:
 

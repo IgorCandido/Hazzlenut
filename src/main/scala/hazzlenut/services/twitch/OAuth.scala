@@ -2,23 +2,21 @@ package hazzlenut.services.twitch
 
 import akka.actor.ActorSystem
 import akka.stream.Materializer
-import cats.Monad
-import cats.data.Reader
-import cats.implicits._
 import hazzlenut.services.twitch.Configuration.Config
 
 import scala.concurrent.ExecutionContext
 
 case class TwitchAppCredentials(clientId: String, clientSecret: String)
 
-case class AccessToken(token: String)
+case class AccessToken(accessToken: String,
+                       tokenType: String,
+                       expiresIn: Int, // Number of seconds
+                       refreshToken: Option[String])
 
 trait OAuth[F[_]] {
-  def getAuthorizeUrl(config: Config)(
-    implicit system: ActorSystem,
-    ec: ExecutionContext,
-    mat: Materializer
-  ): F[Option[String]]
+  def getAuthorizeUrl(config: Config)(implicit system: ActorSystem,
+                                      ec: ExecutionContext,
+                                      mat: Materializer): F[Option[String]]
 
   def obtainAccessToken(code: String, config: Config)(
     implicit system: ActorSystem,

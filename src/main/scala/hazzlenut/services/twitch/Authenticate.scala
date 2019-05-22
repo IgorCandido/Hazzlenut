@@ -28,11 +28,11 @@ object Authenticate {
     implicit system: ActorSystem,
     ec: ExecutionContext,
     mat: Materializer
-  ): Reader[String, F[String]] = Reader {
+  ): Reader[String, F[AccessToken]] = Reader {
     case code =>
       for {
         config <- get[F]
         accessToken <- obtainAccessToken(code, config)
-      } yield accessToken.token
+      } yield accessToken
   }
 }

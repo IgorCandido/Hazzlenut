@@ -110,7 +110,13 @@ object TwitchZIO {
                   )
                 )
               accessToken = accessTokenOrError.map(
-                access => AccessToken(access.accessToken)
+                access =>
+                  AccessToken(
+                    accessToken = access.accessToken,
+                    tokenType = access.tokenType,
+                    expiresIn = access.expiresIn,
+                    refreshToken = access.refreshToken
+                )
               )
             } yield accessToken
           })
@@ -137,7 +143,7 @@ object TwitchZIO {
       implicit system: ActorSystem,
       ec: ExecutionContext,
       mat: Materializer
-    ): Future[String] = {
+    ): Future[AccessToken] = {
       val getOAuthToken =
         Authenticate.authenticate[ZIO[Any, HazzlenutError, ?]]
 

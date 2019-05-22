@@ -57,7 +57,10 @@ class AuthenticateSpec extends WordSpec with Matchers {
       val urlTestIO = Authenticate.authenticate[TestIO].run("code")
 
       urlTestIO.result
-        .fold(_ => fail("Shouldn't have failed"), _ should ===("token"))
+        .fold(_ => fail("Shouldn't have failed"), _ should have ('accessToken ("authed"),
+                                                                            'tokenType (""),
+                                                                            'expiresIn (200),
+                                                                            'refreshToken ("242adas".some)))
     }
 
     "Fail when OAuth token is asked but an error is returned" in {

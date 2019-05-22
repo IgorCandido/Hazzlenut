@@ -2,6 +2,7 @@ package hazzlenut.handler
 
 import akka.actor.ActorSystem
 import akka.stream.Materializer
+import hazzlenut.services.twitch.AccessToken
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -12,7 +13,7 @@ trait AuthenticationHandler {
 
   def obtainOAuth(code: String)(implicit system: ActorSystem,
                                 ec: ExecutionContext,
-                                mat: Materializer): Future[String]
+                                mat: Materializer): Future[AccessToken]
 }
 
 object AuthenticationHandler {
@@ -30,7 +31,7 @@ object AuthenticationHandler {
       ec: ExecutionContext,
       mat: Materializer,
       authentication: AuthenticationHandler
-    ): Future[String] =
+    ): Future[AccessToken] =
       authentication.obtainOAuth(code)
   }
 }

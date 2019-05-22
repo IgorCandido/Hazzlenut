@@ -40,8 +40,14 @@ object TestIO {
     }
 
   def oAuthTestIOWithValues(
-    accessToken: => Either[HazzlenutError, AccessToken] =
-      Either.right(AccessToken("token")),
+    accessToken: => Either[HazzlenutError, AccessToken] = Either.right(
+      AccessToken(
+        accessToken = "authed",
+        tokenType = "",
+        expiresIn = 200,
+        refreshToken = "242adas".some
+      )
+    ),
     getUrl: => Either[HazzlenutError, Option[String]] =
       Either.right("https://www.twitch.tv/".some)
   ) =
@@ -62,7 +68,14 @@ object TestIO {
     }
 
   implicit val oAuthTestIO: OAuth[TestIO] = oAuthTestIOWithValues(
-    Either.right(AccessToken("authed")),
+    Either.right(
+      AccessToken(
+        accessToken = "authed",
+        tokenType = "",
+        expiresIn = 200,
+        refreshToken = "242adas".some
+      )
+    ),
     Either.right("url".some)
   )
 
