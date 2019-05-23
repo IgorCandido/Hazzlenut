@@ -126,6 +126,10 @@ object TwitchZIO {
           }
           .mapError(throwable => ThrowableError(throwable))
       }
+
+      /* For refresh
+      'refresh_token={refreshToken}&grant_type=refresh_token' query string parameters
+       */
     }
 
   implicit val authHandlerZIO = new AuthenticationHandler {
