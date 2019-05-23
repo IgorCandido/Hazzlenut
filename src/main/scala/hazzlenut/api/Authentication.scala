@@ -44,7 +44,23 @@ object Authentication {
               }
             }
 
+          } ~
+        path("refresh") {
+          parameter('refresh.as[String]) {refreshToken =>
+            (extractExecutionContext & extractActorSystem & extractMaterializer){
+              (context, system, materializer) =>
+              {
+                implicit val c = context
+                implicit val s = system
+                implicit val m = materializer
+                onSuccess(refreshOauthToken(refreshToken)) { token =>
+                  complete(s"Token refreshed: ${token}")
+                }
+
+              }
+            }
           }
+        }
       } ~
         path("error") {
           complete(StatusCodes.InternalServerError, "Failure")

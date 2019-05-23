@@ -14,6 +14,10 @@ trait AuthenticationHandler {
   def obtainOAuth(code: String)(implicit system: ActorSystem,
                                 ec: ExecutionContext,
                                 mat: Materializer): Future[AccessToken]
+
+  def refreshToken(code: String)(implicit system: ActorSystem,
+                                ec: ExecutionContext,
+                                mat: Materializer): Future[AccessToken]
 }
 
 object AuthenticationHandler {
@@ -33,5 +37,13 @@ object AuthenticationHandler {
       authentication: AuthenticationHandler
     ): Future[AccessToken] =
       authentication.obtainOAuth(code)
+
+    def refreshOauthToken(refreshToken: String)(
+      implicit system: ActorSystem,
+      ec: ExecutionContext,
+      mat: Materializer,
+      authentication: AuthenticationHandler
+    ): Future[AccessToken] =
+      authentication.refreshToken(refreshToken)
   }
 }

@@ -65,6 +65,14 @@ object TestIO {
         mat: Materializer
       ): TestIO[AccessToken] =
         TestIO(accessToken)
+
+      override def refreshAccessToken(refreshToken: String,
+                                      config: Configuration.Config)(
+        implicit system: ActorSystem,
+        ec: ExecutionContext,
+        mat: Materializer
+      ): TestIO[AccessToken] =
+        TestIO(accessToken)
     }
 
   implicit val oAuthTestIO: OAuth[TestIO] = oAuthTestIOWithValues(

@@ -2,10 +2,9 @@ package hazzlenut.services.twitch
 
 import akka.actor.ActorSystem
 import akka.stream.Materializer
-import cats.{Monad, MonadError}
+import cats.Monad
 import cats.data.Reader
 import cats.implicits._
-import hazzlenut.errors.HazzlenutError
 import hazzlenut.errors.HazzlenutError.MonadErrorHazzlenut
 
 import scala.concurrent.ExecutionContext
@@ -33,6 +32,18 @@ object Authenticate {
       for {
         config <- get[F]
         accessToken <- obtainAccessToken(code, config)
+      } yield accessToken
+  }
+
+  def refresh[F[_]: OAuth: Configuration: Monad: MonadErrorHazzlenut](
+    implicit system: ActorSystem,
+    ec: ExecutionContext,
+    mat: Materializer
+  ): Reader[String, F[AccessToken]] = Reader {
+    case refreshToken =>
+      for {
+        config <- get[F]
+        accessToken <- refreshAccessToken(refreshToken, config)
       } yield accessToken
   }
 }

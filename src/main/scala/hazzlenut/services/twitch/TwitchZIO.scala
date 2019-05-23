@@ -1,4 +1,4 @@
-package hazzlenut.twitch
+package hazzlenut.services.twitch
 
 import java.net.URI
 
@@ -9,12 +9,6 @@ import com.github.dakatsuka.akka.http.oauth2.client.{Client, Config, GrantType}
 import hazzlenut.errors.HazzlenutError
 import hazzlenut.errors.HazzlenutError.ThrowableError
 import hazzlenut.handler.AuthenticationHandler
-import hazzlenut.services.twitch.{
-  AccessToken,
-  Authenticate,
-  Configuration,
-  OAuth
-}
 import hazzlenut.util.MapGetterValidation._
 import scalaz.zio.ZIO
 import scalaz.zio.interop.catz._
@@ -130,6 +124,49 @@ object TwitchZIO {
       /* For refresh
       'refresh_token={refreshToken}&grant_type=refresh_token' query string parameters
        */
+      override def refreshAccessToken(refreshToken: String,
+                                      configuration: Configuration.Config)(
+        implicit system: ActorSystem,
+        ec: ExecutionContext,
+        mat: Materializer
+      ): ZIO[Any, HazzlenutError, AccessToken] = {
+
+        ZIO
+          .fromFuture(ec => {
+            implicit val exec = ec
+            val config = Config(
+              clientId = configuration.clientId,
+              clientSecret = configuration.clientSecret,
+              site = URI.create(configuration.siteUrl),
+              authorizeUrl = configuration.authorizeUrl,
+              tokenUrl = configuration.tokenUrl
+            )
+
+            val client = new Client(config)
+
+            for {
+              accessTokenOrError <- client
+                .getAccessToken(
+                  GrantType.RefreshToken,
+                  Map("refresh_token" -> refreshToken)
+                )
+              accessToken = accessTokenOrError.map(
+                access =>
+                  AccessToken(
+                    accessToken = access.accessToken,
+                    tokenType = access.tokenType,
+                    expiresIn = access.expiresIn,
+                    refreshToken = access.refreshToken
+                )
+              )
+            } yield accessToken
+          })
+          .flatMap {
+            case Right(result)   => ZIO.succeed(result)
+            case Left(throwable) => ZIO.fail(throwable)
+          }
+          .mapError(throwable => ThrowableError(throwable))
+      }
     }
 
   implicit val authHandlerZIO = new AuthenticationHandler {
@@ -152,6 +189,17 @@ object TwitchZIO {
         Authenticate.authenticate[ZIO[Any, HazzlenutError, ?]]
 
       runtime.unsafeRunToFuture(getOAuthToken.run(code))
+    }
+
+    override def refreshToken(code: String)(
+      implicit system: ActorSystem,
+      ec: ExecutionContext,
+      mat: Materializer
+    ): Future[AccessToken] = {
+      val refreshToken =
+        Authenticate.refresh[ZIO[Any, HazzlenutError, ?]]
+
+      runtime.unsafeRunToFuture(refreshToken.run(code))
     }
   }
 }
