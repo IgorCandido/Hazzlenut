@@ -12,6 +12,11 @@ import akka.pattern.pipe
 case object ProvideAccessToken
 case object TokenExpiredNeedNew
 
+/*
+ hold oauth token,
+ refresh oauth token,
+ report problem on refreshing and advice that user goes through into Oauth flow again
+ */
 class TokenHolder(var accessToken: AccessToken) extends Actor {
   import hazzlenut.services.twitch.TwitchZIO._
   implicit val system = context.system
