@@ -195,11 +195,11 @@ object TwitchZIO {
       implicit system: ActorSystem,
       ec: ExecutionContext,
       mat: Materializer
-    ): Future[AccessToken] = {
+    ): Future[Either[HazzlenutError, AccessToken]] = {
       val refreshToken =
         Authenticate.refresh[ZIO[Any, HazzlenutError, ?]]
 
-      runtime.unsafeRunToFuture(refreshToken.run(code))
+      runtime.unsafeRunToFuture(refreshToken.run(code).either)
     }
   }
 }

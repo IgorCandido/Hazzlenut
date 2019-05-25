@@ -2,6 +2,7 @@ package hazzlenut.handler
 
 import akka.actor.ActorSystem
 import akka.stream.Materializer
+import hazzlenut.errors.HazzlenutError
 import hazzlenut.services.twitch.AccessToken
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -17,7 +18,7 @@ trait AuthenticationHandler {
 
   def refreshToken(code: String)(implicit system: ActorSystem,
                                 ec: ExecutionContext,
-                                mat: Materializer): Future[AccessToken]
+                                mat: Materializer): Future[Either[HazzlenutError, AccessToken]]
 }
 
 object AuthenticationHandler {
@@ -43,7 +44,7 @@ object AuthenticationHandler {
       ec: ExecutionContext,
       mat: Materializer,
       authentication: AuthenticationHandler
-    ): Future[AccessToken] =
+    ): Future[Either[HazzlenutError, AccessToken]] =
       authentication.refreshToken(refreshToken)
   }
 }

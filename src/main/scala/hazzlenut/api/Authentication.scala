@@ -6,7 +6,7 @@ import hazzlenut.handler.AuthenticationHandler
 
 object Authentication {
   val publicRoute = {
-    import hazzlenut.twitch.TwitchZIO._
+    import hazzlenut.services.twitch.TwitchZIO._
     route
   }
 
