@@ -19,6 +19,8 @@ trait AuthenticationHandler {
   def refreshToken(code: String)(implicit system: ActorSystem,
                                 ec: ExecutionContext,
                                 mat: Materializer): Future[Either[HazzlenutError, AccessToken]]
+
+  def reAuthenticate(): Either[HazzlenutError,Unit]
 }
 
 object AuthenticationHandler {
@@ -46,5 +48,8 @@ object AuthenticationHandler {
       authentication: AuthenticationHandler
     ): Future[Either[HazzlenutError, AccessToken]] =
       authentication.refreshToken(refreshToken)
+
+    def reAuthenticate(implicit authenticationHandler: AuthenticationHandler): Either[HazzlenutError, Unit] =
+      authenticationHandler.reAuthenticate()
   }
 }

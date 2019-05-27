@@ -14,6 +14,7 @@ import scalaz.zio.ZIO
 import scalaz.zio.interop.catz._
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.Try
 
 object TwitchZIO {
   implicit val configurationZIO =
@@ -200,6 +201,32 @@ object TwitchZIO {
         Authenticate.refresh[ZIO[Any, HazzlenutError, ?]]
 
       runtime.unsafeRunToFuture(refreshToken.run(code).either)
+    }
+
+    override def reAuthenticate(): Either[HazzlenutError, Unit] = {
+      val reauthentication = Authenticate.reAuthenticate[ZIO[Any, HazzlenutError, ?]]
+
+      runtime.unsafeRun(reauthentication)
+    }
+  }
+
+  implicit val ReauthenticateZIO: Reauthentication[ZIO[Any, HazzlenutError, ?]] = new Reauthentication[ZIO[Any, HazzlenutError, ?]] {
+    override def requestAuthenticationFromUser()
+      : ZIO[Any, HazzlenutError, Either[HazzlenutError, Unit]] = {
+      import java.awt.Desktop
+      import java.net.URI
+
+      ZIO.fromTry {
+        Try {
+          if (Desktop.isDesktopSupported() && Desktop
+                .getDesktop()
+                .isSupported(Desktop.Action.BROWSE)) {
+            Desktop
+              .getDesktop()
+              .browse(new URI("http://localhost:8000/oauth/login"))
+          }
+        }
+      }.mapError{throwable => ThrowableError(throwable)}.either
     }
   }
 }

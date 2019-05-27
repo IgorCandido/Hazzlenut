@@ -39,7 +39,6 @@ object Authentication {
                     onSuccess(obtainOauthToken(code)) { token =>
                       complete(s"Token obtained: ${token}")
                     }
-
                   }
               }
             }

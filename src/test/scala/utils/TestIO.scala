@@ -131,7 +131,8 @@ object TestIO {
             refreshToken = "242adas".some
           )
         )
-      )
+      ),
+    reAuthenticateParam: () => Either[HazzlenutError, Unit] = () => Either.right(Unit)
   ): AuthenticationHandler =
     new AuthenticationHandler {
       override def getAuthUrl(implicit system: ActorSystem,
@@ -150,6 +151,8 @@ object TestIO {
         ec: ExecutionContext,
         mat: Materializer
       ): Future[Either[HazzlenutError, AccessToken]] = refreshTokenValue
+
+      override def reAuthenticate(): Either[HazzlenutError, Unit] = reAuthenticateParam()
     }
 
   def configurationTestIOWithValues(

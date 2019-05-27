@@ -5,6 +5,7 @@ import akka.stream.Materializer
 import cats.Monad
 import cats.data.Reader
 import cats.implicits._
+import hazzlenut.errors.HazzlenutError
 import hazzlenut.errors.HazzlenutError.MonadErrorHazzlenut
 
 import scala.concurrent.ExecutionContext
@@ -45,5 +46,11 @@ object Authenticate {
         config <- get[F]
         accessToken <- refreshAccessToken(refreshToken, config)
       } yield accessToken
+  }
+
+  def reAuthenticate[F[_]: Reauthentication]: F[Either[HazzlenutError,Unit]] ={
+    import Reauthentication.dsl._
+
+    reauthenticateWithUser()
   }
 }
