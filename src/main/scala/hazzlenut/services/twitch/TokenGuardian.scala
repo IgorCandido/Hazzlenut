@@ -18,15 +18,7 @@ class TokenGuardian(implicit authenticationHandler: AuthenticationHandler,
                     tokenHolderInitializer: TokenHolderInitializer)
     extends Actor {
 
-  def authenticateUserAgainAndWaitForResult(): Either[HazzlenutError, Unit] = {
-    // Asking for authentication
-    context.become(waitingForUserAuthentication)
-    authenticationHandler.reAuthenticate()
-  }
-
   authenticateUserAgainAndWaitForResult()
-
-  override def receive: Receive = ???
 
   def workingNormally(tokenHolder: ActorRef): Receive = {
     case CantRenewToken =>
@@ -39,14 +31,32 @@ class TokenGuardian(implicit authenticationHandler: AuthenticationHandler,
       tokenHolder forward msg
   }
 
-  def waitingForUserAuthentication: Receive = {
+  def waitingForUserAuthentication(
+    queuedMessages: Set[(ActorRef, Any)] = Set.empty
+  ): Receive = {
     case Authenticated(accessToken) =>
+      val tokenHolder =
+        tokenHolderInitializer.initializeTokenHolder(accessToken, self)
+      // Notify new Token Holder the messages received whilst waiting
+      queuedMessages.foreach {
+        case (sender, msg) => tokenHolder.tell(msg, sender)
+      }
+      context.become(workingNormally(tokenHolder))
+
+    case msg @ TokenHolder.AskAccessToken =>
       context.become(
-        workingNormally(
-          tokenHolderInitializer.initializeTokenHolder(accessToken, self)
-        )
+        waitingForUserAuthentication(queuedMessages + ((sender(), msg)))
       )
 
-    // TODO handle token requests and save them for replies after we initialize the token handler
+    case TokenHolder.TokenExpiredNeedNew =>
+      // NOP we are already handling the renewal of the oauth
   }
+
+  def authenticateUserAgainAndWaitForResult(): Either[HazzlenutError, Unit] = {
+    // Asking for authentication
+    context.become(waitingForUserAuthentication())
+    authenticationHandler.reAuthenticate()
+  }
+
+  override def receive: Receive = ???
 }
