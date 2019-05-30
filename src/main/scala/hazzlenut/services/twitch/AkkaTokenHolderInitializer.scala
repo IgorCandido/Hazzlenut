@@ -9,3 +9,7 @@ class AkkaTokenHolderInitializer extends TokenHolderInitializer {
   ): ActorRef =
     context.system.actorOf(TokenHolder.props(accessToken, self))
 }
+
+object AkkaTokenHolderInitializer{
+  def apply(): AkkaTokenHolderInitializer = new AkkaTokenHolderInitializer()
+}

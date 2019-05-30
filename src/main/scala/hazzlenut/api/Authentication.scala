@@ -10,6 +10,7 @@ object Authentication {
     route
   }
 
+  // TODO receive the token guardian
   def route(implicit a: AuthenticationHandler) = {
     import AuthenticationHandler.dsl._
     get {
@@ -37,6 +38,7 @@ object Authentication {
                     implicit val s = system
                     implicit val m = materializer
                     onSuccess(obtainOauthToken(code)) { token =>
+                    // TODO send access token to token guardian
                       complete(s"Token obtained: ${token}")
                     }
                   }
