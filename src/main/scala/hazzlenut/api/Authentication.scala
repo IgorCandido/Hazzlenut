@@ -1,17 +1,18 @@
 package hazzlenut.api
 
+import akka.actor.ActorRef
 import akka.http.scaladsl.model.{StatusCodes, Uri}
 import akka.http.scaladsl.server.Directives._
 import hazzlenut.handler.AuthenticationHandler
+import hazzlenut.services.twitch.TokenGuardian.Authenticated
 
 object Authentication {
-  val publicRoute = {
+  def publicRoute(implicit tokenGuardian: ActorRef) = {
     import hazzlenut.services.twitch.TwitchZIO._
     route
   }
 
-  // TODO receive the token guardian
-  def route(implicit a: AuthenticationHandler) = {
+  def route(implicit a: AuthenticationHandler, tokenGuardian: ActorRef) = {
     import AuthenticationHandler.dsl._
     get {
       pathPrefix("oauth") {
@@ -38,7 +39,7 @@ object Authentication {
                     implicit val s = system
                     implicit val m = materializer
                     onSuccess(obtainOauthToken(code)) { token =>
-                    // TODO send access token to token guardian
+                      tokenGuardian ! Authenticated(token)
                       complete(s"Token obtained: ${token}")
                     }
                   }
@@ -46,22 +47,22 @@ object Authentication {
             }
 
           } ~
-        path("refresh") {
-          parameter('refresh.as[String]) {refreshToken =>
-            (extractExecutionContext & extractActorSystem & extractMaterializer){
-              (context, system, materializer) =>
-              {
-                implicit val c = context
-                implicit val s = system
-                implicit val m = materializer
-                onSuccess(refreshOauthToken(refreshToken)) { token =>
-                  complete(s"Token refreshed: ${token}")
-                }
+          path("refresh") {
+            parameter('refresh.as[String]) { refreshToken =>
+              (extractExecutionContext & extractActorSystem & extractMaterializer) {
+                (context, system, materializer) =>
+                  {
+                    implicit val c = context
+                    implicit val s = system
+                    implicit val m = materializer
+                    onSuccess(refreshOauthToken(refreshToken)) { token =>
+                      complete(s"Token refreshed: ${token}")
+                    }
 
+                  }
               }
             }
           }
-        }
       } ~
         path("error") {
           complete(StatusCodes.InternalServerError, "Failure")

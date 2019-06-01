@@ -23,6 +23,8 @@ val circeVersion = "0.10.0"
 val circeParse = "io.circe" %% "circe-parser" % circeVersion
 val circeCore = "io.circe" %% "circe-core" % circeVersion
 val circeGeneric = "io.circe" %% "circe-generic" % circeVersion
+val akkaStreamTestKit = "com.typesafe.akka" %% "akka-stream-testkit" % "2.5.19"
+val akkaHttpTestKit = "com.typesafe.akka" %% "akka-http-testkit" % "10.1.8"
 
 libraryDependencies ++= Seq(
   cats,
@@ -38,7 +40,9 @@ libraryDependencies ++= Seq(
   dakatsukaOauth,
   circeCore,
   circeParse,
-  circeGeneric
+  circeGeneric,
+  akkaStreamTestKit,
+  akkaHttpTestKit
 )
 
 mainClass in assembly := Some("hazzlenut.Main")

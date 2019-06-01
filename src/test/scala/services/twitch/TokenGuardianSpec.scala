@@ -7,7 +7,7 @@ import hazzlenut.services.twitch.{AccessToken, TokenGuardian, TokenHolder, Token
 import org.scalatest.{Matchers, WordSpecLike}
 import utils.TestIO
 import cats.implicits._
-import hazzlenut.services.twitch.TokenGuardian.Authenticated
+import hazzlenut.services.twitch.TokenGuardian.{ApplicationStarted, Authenticated}
 import hazzlenut.services.twitch.TokenHolder.AskAccessToken
 
 import scala.concurrent.duration._
@@ -50,6 +50,7 @@ class TokenGuardianSpec
       }
 
       val guardian = system.actorOf(TokenGuardian.props)
+      guardian ! ApplicationStarted
 
       guardian ! Authenticated(accessToken)
 
@@ -88,6 +89,7 @@ class TokenGuardianSpec
       }
 
       val guardian = system.actorOf(TokenGuardian.props)
+      guardian ! ApplicationStarted
 
       val customer = TestProbe()
 
@@ -131,6 +133,7 @@ class TokenGuardianSpec
       }
 
       val guardian = system.actorOf(TokenGuardian.props)
+      guardian ! ApplicationStarted
 
       val customer = TestProbe()
 
@@ -173,6 +176,7 @@ class TokenGuardianSpec
       }
 
       val guardian = system.actorOf(TokenGuardian.props)
+      guardian ! ApplicationStarted
 
       val watcher = TestProbe()
 
@@ -218,8 +222,10 @@ class TokenGuardianSpec
       }
 
       val guardian = system.actorOf(TokenGuardian.props)
+      guardian ! ApplicationStarted
 
       guardian ! Authenticated(accessToken)
+
 
       val customer = TestProbe()
 
@@ -259,6 +265,7 @@ class TokenGuardianSpec
       }
 
       val guardian = system.actorOf(TokenGuardian.props)
+      guardian ! ApplicationStarted
 
       guardian ! Authenticated(accessToken)
 

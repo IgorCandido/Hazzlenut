@@ -1,12 +1,12 @@
 package hazzlenut
 
-import hazzlenut.akkaServer.Server.Configuration
-import hazzlenut.akkaServer.Server
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
+import hazzlenut.akkaServer.Server
+import hazzlenut.akkaServer.Server.Configuration
 import hazzlenut.api.Authentication
+import hazzlenut.services.twitch.TokenGuardian.ApplicationStarted
 import hazzlenut.services.twitch.{AkkaTokenHolderInitializer, TokenGuardian}
-
 
 object Main extends App {
   implicit val system = ActorSystem()
@@ -15,11 +15,17 @@ object Main extends App {
 
   implicit val tokenInitializer = AkkaTokenHolderInitializer()
   import hazzlenut.services.twitch.TwitchZIO._ // TODO Think about using this actor system, same for akka http
-                                                // and about import the twitch ZIO here.
+  // and about import the twitch ZIO here.
 
-  val tokenGuardian = system.actorOf(TokenGuardian.props)
+  implicit val tokenGuardian = system.actorOf(TokenGuardian.props)
 
-  val runConfiguration = Configuration(interface= "0.0.0.0", port= 8000, route= Authentication.publicRoute)
+  val runConfiguration = Configuration(
+    interface = "0.0.0.0",
+    port = 8000,
+    route = Authentication.publicRoute
+  )
+
+  tokenGuardian ! ApplicationStarted
 
   val server = Server.create.run(runConfiguration)
 

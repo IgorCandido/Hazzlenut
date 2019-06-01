@@ -3,11 +3,12 @@ package hazzlenut.services.twitch
 import akka.actor.{Actor, ActorRef, PoisonPill, Props}
 import hazzlenut.errors.HazzlenutError
 import hazzlenut.handler.AuthenticationHandler
-import hazzlenut.services.twitch.TokenGuardian.{Authenticated, CantRenewToken}
+import hazzlenut.services.twitch.TokenGuardian.{ApplicationStarted, Authenticated, CantRenewToken}
 
 object TokenGuardian {
   case object CantRenewToken
   case class Authenticated(accessToken: AccessToken)
+  case object ApplicationStarted
 
   def props(implicit authenticationHandler: AuthenticationHandler,
             tokenHolderInitializer: TokenHolderInitializer) =
@@ -17,8 +18,6 @@ object TokenGuardian {
 class TokenGuardian(implicit authenticationHandler: AuthenticationHandler,
                     tokenHolderInitializer: TokenHolderInitializer)
     extends Actor {
-
-  authenticateUserAgainAndWaitForResult()
 
   def workingNormally(tokenHolder: ActorRef): Receive = {
     case CantRenewToken =>
@@ -49,7 +48,7 @@ class TokenGuardian(implicit authenticationHandler: AuthenticationHandler,
       )
 
     case TokenHolder.TokenExpiredNeedNew =>
-      // NOP we are already handling the renewal of the oauth
+    // NOP we are already handling the renewal of the oauth
   }
 
   def authenticateUserAgainAndWaitForResult(): Either[HazzlenutError, Unit] = {
@@ -58,5 +57,8 @@ class TokenGuardian(implicit authenticationHandler: AuthenticationHandler,
     authenticationHandler.reAuthenticate()
   }
 
-  override def receive: Receive = ???
+  override def receive: Receive = {
+    case ApplicationStarted =>
+      authenticateUserAgainAndWaitForResult()
+  }
 }
