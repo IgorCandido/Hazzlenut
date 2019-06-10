@@ -14,6 +14,8 @@ val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.14.0" % Test
 val akkaHttp = "com.typesafe.akka" %% "akka-http" % "10.1.8"
 val akka = "com.typesafe.akka" %% "akka-actor" % "2.5.22"
 val akkaStream = "com.typesafe.akka" %% "akka-stream" % "2.5.22"
+val akkaHttpClient = "com.typesafe.akka" %% "akka-http-core" % "10.1.8"
+val `akka-http-spray-json` = "com.typesafe.akka" %% "akka-http-spray-json" % "10.1.8"
 val akkaTestKit = "com.typesafe.akka" %% "akka-testkit" % "2.5.23" % Test
 val catseffect = "org.typelevel" %% "cats-effect" % "1.2.0"
 val cats = "org.typelevel" %% "cats-core" % "0.9.0"
@@ -36,13 +38,15 @@ libraryDependencies ++= Seq(
   akkaHttp,
   akkaStream,
   akka,
+  akkaHttpClient,
   akkaTestKit,
   dakatsukaOauth,
   circeCore,
   circeParse,
   circeGeneric,
   akkaStreamTestKit,
-  akkaHttpTestKit
+  akkaHttpTestKit,
+  `akka-http-spray-json`
 )
 
 mainClass in assembly := Some("hazzlenut.Main")
