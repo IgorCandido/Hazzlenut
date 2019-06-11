@@ -16,6 +16,5 @@ case class User(broadcaster_type: String,
 
 object User extends SprayJsonSupport with DefaultJsonProtocol {
   implicit val userFormat = jsonFormat10(User.apply)
-  implicit def twitchReplyFormat[T] = jsonFormat1(TwitchReply[User])
+  implicit def twitchReplyFormat = jsonFormat1(TwitchReply[User])
 }
-
