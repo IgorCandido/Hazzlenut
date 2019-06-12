@@ -2,7 +2,7 @@ package hazzlenut.services.twitch
 
 import akka.actor.ActorSystem
 import akka.stream.Materializer
-import cats.{Monad, MonadError}
+import cats.Monad
 import cats.data.Reader
 import cats.implicits._
 import hazzlenut.errors.HazzlenutError
@@ -34,5 +34,23 @@ object Authenticate {
         config <- get[F]
         accessToken <- obtainAccessToken(code, config)
       } yield accessToken
+  }
+
+  def refresh[F[_]: OAuth: Configuration: Monad: MonadErrorHazzlenut](
+    implicit system: ActorSystem,
+    ec: ExecutionContext,
+    mat: Materializer
+  ): Reader[String, F[AccessToken]] = Reader {
+    case refreshToken =>
+      for {
+        config <- get[F]
+        accessToken <- refreshAccessToken(refreshToken, config)
+      } yield accessToken
+  }
+
+  def reAuthenticate[F[_]: Reauthentication]: F[Either[HazzlenutError,Unit]] ={
+    import Reauthentication.dsl._
+
+    reauthenticateWithUser()
   }
 }

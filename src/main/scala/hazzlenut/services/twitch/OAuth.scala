@@ -23,6 +23,12 @@ trait OAuth[F[_]] {
     ec: ExecutionContext,
     mat: Materializer
   ): F[AccessToken]
+
+  def refreshAccessToken(refreshToken: String, config: Config)(
+    implicit system: ActorSystem,
+    ec: ExecutionContext,
+    mat: Materializer
+  ): F[AccessToken]
 }
 
 object OAuth {
@@ -35,6 +41,14 @@ object OAuth {
       mat: Materializer
     ): F[AccessToken] =
       OAuth[F].obtainAccessToken(code, config)
+
+    def refreshAccessToken[F[_]: OAuth](refreshToken: String, config: Config)(
+      implicit system: ActorSystem,
+      ec: ExecutionContext,
+      mat: Materializer
+    ): F[AccessToken] =
+      OAuth[F].refreshAccessToken(refreshToken, config)
+
 
     def getClientRedirectUrl[F[_]: OAuth](config: Config)(
       implicit system: ActorSystem,

@@ -4,10 +4,11 @@ import akka.stream.Materializer
 import cats.implicits._
 import cats.{Monad, MonadError}
 import hazzlenut.errors.HazzlenutError
+import hazzlenut.handler.AuthenticationHandler
 import hazzlenut.services.twitch.{AccessToken, Configuration, OAuth}
 import hazzlenut.util.MapGetterValidation.ConfigurationValidation
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 case class TestIO[A](result: Either[HazzlenutError, A])
 
@@ -65,6 +66,14 @@ object TestIO {
         mat: Materializer
       ): TestIO[AccessToken] =
         TestIO(accessToken)
+
+      override def refreshAccessToken(refreshToken: String,
+                                      config: Configuration.Config)(
+        implicit system: ActorSystem,
+        ec: ExecutionContext,
+        mat: Materializer
+      ): TestIO[AccessToken] =
+        TestIO(accessToken)
     }
 
   implicit val oAuthTestIO: OAuth[TestIO] = oAuthTestIOWithValues(
@@ -78,6 +87,73 @@ object TestIO {
     ),
     Either.right("url".some)
   )
+
+  implicit val authentactioHandler: AuthenticationHandler =
+    authenticationHandlerWithValues(
+      getAuthValue = Future.successful("authUrl".some),
+      obtainOAuthValue = Future.successful(
+        AccessToken(
+          accessToken = "authed",
+          tokenType = "",
+          expiresIn = 200,
+          refreshToken = "242adas".some
+        )
+      ),
+      refreshTokenValue = Future.successful(
+        Either.right(
+          AccessToken(
+            accessToken = "authed",
+            tokenType = "",
+            expiresIn = 200,
+            refreshToken = "242adas".some
+          )
+        )
+      )
+    )
+
+  def authenticationHandlerWithValues(
+    getAuthValue: Future[Option[String]] = Future.successful("authUrl".some),
+    obtainOAuthValue: Future[AccessToken] = Future.successful(
+      AccessToken(
+        accessToken = "authed",
+        tokenType = "",
+        expiresIn = 200,
+        refreshToken = "242adas".some
+      )
+    ),
+    refreshTokenValue: Future[Either[HazzlenutError, AccessToken]] =
+      Future.successful(
+        Either.right(
+          AccessToken(
+            accessToken = "authed",
+            tokenType = "",
+            expiresIn = 200,
+            refreshToken = "242adas".some
+          )
+        )
+      ),
+    reAuthenticateParam: () => Either[HazzlenutError, Unit] = () => Either.right(Unit)
+  ): AuthenticationHandler =
+    new AuthenticationHandler {
+      override def getAuthUrl(implicit system: ActorSystem,
+                              ec: ExecutionContext,
+                              mat: Materializer): Future[Option[String]] =
+        getAuthValue
+
+      override def obtainOAuth(code: String)(
+        implicit system: ActorSystem,
+        ec: ExecutionContext,
+        mat: Materializer
+      ): Future[AccessToken] = obtainOAuthValue
+
+      override def refreshToken(code: String)(
+        implicit system: ActorSystem,
+        ec: ExecutionContext,
+        mat: Materializer
+      ): Future[Either[HazzlenutError, AccessToken]] = refreshTokenValue
+
+      override def reAuthenticate(): Either[HazzlenutError, Unit] = reAuthenticateParam()
+    }
 
   def configurationTestIOWithValues(
     config: (ConfigurationValidation[String],
