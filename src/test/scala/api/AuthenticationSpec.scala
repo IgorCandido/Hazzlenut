@@ -1,18 +1,17 @@
 package api
 
-import akka.actor.ActorSystem
 import akka.http.scaladsl.testkit.ScalatestRouteTest
-import akka.testkit.{TestKit, TestProbe}
+import akka.testkit.TestProbe
+import cats.implicits._
 import hazzlenut.api.Authentication
 import hazzlenut.services.twitch.AccessToken
+import hazzlenut.services.twitch.TokenGuardian.Authenticated
 import org.scalatest.{Matchers, WordSpecLike}
 import utils.TestIO
-import cats.implicits._
-import hazzlenut.services.twitch.TokenGuardian.Authenticated
 
 import scala.concurrent.Future
 
-class Authentication
+class AuthenticationSpec
     extends WordSpecLike
     with Matchers
     with ScalatestRouteTest {
@@ -35,7 +34,7 @@ class Authentication
 
       val authenticationRoute = Authentication.route
 
-      Get("/oauth/reply?code=testCode") ~> authenticationRoute ~> check{
+      Get("/oauth/reply?code=testCode") ~> authenticationRoute ~> check {
         handled should ===(true)
       }
 

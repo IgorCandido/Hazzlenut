@@ -10,6 +10,8 @@ object HazzlenutError{
   final case class ThrowableError(throwable: Throwable) extends HazzlenutError
 
   final case class InvalidConfiguration(fieldErrors: String) extends HazzlenutError
+
+  final case object UnableToFetchUserInformation extends HazzlenutError
 }
 
 

@@ -14,7 +14,7 @@ object Main extends App {
   implicit val executionContext = system.dispatcher
 
   implicit val tokenInitializer = AkkaTokenHolderInitializer()
-  import hazzlenut.services.twitch.TwitchZIO._ // TODO Think about using this actor system, same for akka http
+  // TODO Think about using this actor system, same for akka http
   // and about import the twitch ZIO here.
 
   implicit val tokenGuardian = system.actorOf(TokenGuardian.props)
