@@ -12,6 +12,7 @@ import hazzlenut.services.twitch.TokenHolder.{AskAccessToken, ReplyAccessToken}
 import hazzlenut.services.twitch.TwitchClient.dsl.retrieveUser
 import hazzlenut.util.ZIORuntime.runtime
 import scalaz.zio.ZIO
+import scalaz.zio.interop.catz._
 
 import scala.concurrent.duration._
 

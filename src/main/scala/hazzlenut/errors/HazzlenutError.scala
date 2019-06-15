@@ -12,6 +12,8 @@ object HazzlenutError{
   final case class InvalidConfiguration(fieldErrors: String) extends HazzlenutError
 
   final case object UnableToFetchUserInformation extends HazzlenutError
+
+  final case object UnableToConnect extends HazzlenutError
 }
 
 

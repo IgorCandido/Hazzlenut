@@ -1,18 +1,49 @@
 package utils
 import akka.actor.ActorSystem
+import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpRequest, HttpResponse}
+import akka.http.scaladsl.unmarshalling.{Unmarshal, Unmarshaller}
 import akka.stream.Materializer
 import cats.implicits._
 import cats.{Monad, MonadError}
 import hazzlenut.errors.HazzlenutError
+import hazzlenut.errors.HazzlenutError.{ThrowableError, UnableToConnect, UnableToFetchUserInformation}
 import hazzlenut.handler.AuthenticationHandler
-import hazzlenut.services.twitch.{AccessToken, Configuration, OAuth}
+import hazzlenut.services.twitch.model.User
+import hazzlenut.services.twitch.{AccessToken, Configuration, OAuth, TwitchClient}
 import hazzlenut.util.MapGetterValidation.ConfigurationValidation
+import hazzlenut.util.{HttpClient, UnmarshallerEntiy}
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success}
 
 case class TestIO[A](result: Either[HazzlenutError, A])
 
 object TestIO {
+  implicit val twitchClient = new TwitchClient[TestIO] {
+    override def fromOption[Out](
+      optionOf: Option[Out],
+      hazzlenutError: HazzlenutError
+    )(implicit monadError: MonadError[TestIO, HazzlenutError]): TestIO[Out] =
+      optionOf match {
+        case None         => monadError.raiseError(hazzlenutError)
+        case Some(result) => monadError.pure[Out](result)
+      }
+
+    override def user(accessToken: AccessToken)(
+      implicit actorSystem: ActorSystem,
+      materializer: Materializer,
+      httpClient: HttpClient[TestIO],
+      unmarshallerEntiy: UnmarshallerEntiy[TestIO],
+      monadF: Monad[TestIO],
+      monadError: MonadError[TestIO, HazzlenutError]
+    ): TestIO[User] =
+      doRequest[User](
+        "http://testUser",
+        accessToken,
+        UnableToFetchUserInformation
+      )
+  }
+
   implicit def TestIOMonad =
     new Monad[TestIO] with MonadError[TestIO, HazzlenutError] {
       override def flatMap[A, B](fa: TestIO[A])(f: A => TestIO[B]): TestIO[B] =
@@ -132,7 +163,8 @@ object TestIO {
           )
         )
       ),
-    reAuthenticateParam: () => Either[HazzlenutError, Unit] = () => Either.right(Unit)
+    reAuthenticateParam: () => Either[HazzlenutError, Unit] = () =>
+      Either.right(Unit)
   ): AuthenticationHandler =
     new AuthenticationHandler {
       override def getAuthUrl(implicit system: ActorSystem,
@@ -152,7 +184,8 @@ object TestIO {
         mat: Materializer
       ): Future[Either[HazzlenutError, AccessToken]] = refreshTokenValue
 
-      override def reAuthenticate(): Either[HazzlenutError, Unit] = reAuthenticateParam()
+      override def reAuthenticate(): Either[HazzlenutError, Unit] =
+        reAuthenticateParam()
     }
 
   def configurationTestIOWithValues(
@@ -189,4 +222,47 @@ object TestIO {
       "channel:read:subscriptions".validNel
     )
   )
+
+  def httpClientSucess(defaultReply: String): HttpClient[TestIO] =
+    httpClient(
+      implicitly[MonadError[TestIO, HazzlenutError]]
+        .pure(
+          HttpResponse(
+            entity = HttpEntity(ContentTypes.`application/json`, defaultReply)
+          )
+        )
+    )
+
+  implicit def httpClient(testIO: TestIO[HttpResponse]) =
+    new HttpClient[TestIO] {
+      override def request(httpRequest: HttpRequest): TestIO[HttpResponse] =
+        testIO
+
+    }
+
+  def unmarshallerEntiy[Out](testIO: TestIO[Out]): UnmarshallerEntiy[TestIO] = new UnmarshallerEntiy[TestIO]{
+    override def unmarshal[T, S](entity: T)(implicit materializer: Materializer, unmarshaller: Unmarshaller[T, S]):
+          TestIO[S] =
+        testIO
+  }
+
+  implicit val unmarshallerEntiy = new UnmarshallerEntiy[TestIO] {
+    override def unmarshal[T, S](entity: T)(
+      implicit materializer: Materializer,
+      unmarshaller: Unmarshaller[T, S]
+    ): TestIO[S] = {
+      TestIO {
+        Unmarshal(entity)
+          .to[S]
+          .value
+          .fold(Either.left[HazzlenutError, S](UnableToConnect)) { res =>
+            res match {
+              case Success(value) => Either.right[HazzlenutError, S](value)
+              case Failure(throwable) =>
+                Either.left[HazzlenutError, S](ThrowableError(throwable))
+            }
+          }
+      }
+    }
+  }
 }
