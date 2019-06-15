@@ -243,7 +243,8 @@ object TestIO {
   def unmarshallerEntiy[Out](testIO: TestIO[Out]): UnmarshallerEntiy[TestIO] = new UnmarshallerEntiy[TestIO]{
     override def unmarshal[T, S](entity: T)(implicit materializer: Materializer, unmarshaller: Unmarshaller[T, S]):
           TestIO[S] =
-        testIO
+        testIO.asInstanceOf[TestIO[S]] // Nasty cause I want to make sure that it is the same
+                                       // type at compile type, can't find a way to do it
   }
 
   implicit val unmarshallerEntiy = new UnmarshallerEntiy[TestIO] {
