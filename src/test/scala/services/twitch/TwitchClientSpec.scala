@@ -7,7 +7,7 @@ import cats.MonadError
 import cats.implicits._
 import hazzlenut.errors.HazzlenutError
 import hazzlenut.services.twitch.{AccessToken, TwitchClient}
-import hazzlenut.util.HttpClient
+import hazzlenut.util.{HttpClient, ZIORuntime}
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpec}
 import utils.TestIO
 
@@ -27,6 +27,9 @@ class TwitchClientSpec
 
   "TwitchClient" should {
     "get user when access token provided" in {
+      // TODO after the TwitchClient has it's logic abstract into the type class, implement an TwitchClient for TestIO
+      // with an HttpClient for TestIO and an Unmarsheller for TestIO
+
       implicit val httpClient = new HttpClient[TestIO] {
         override def request(httpRequest: HttpRequest): TestIO[HttpResponse] =
           implicitly[MonadError[TestIO, HazzlenutError]].pure(HttpResponse(entity = defaultReply))
@@ -35,6 +38,13 @@ class TwitchClientSpec
       val client = TwitchClient.twitchClientZIO
 
       val reply = client.user(accessToken)
+
+      val userOrError = ZIORuntime.runtime.unsafeRun(reply.either)
+
+      userOrError.fold(error => fail("failed to retrieve user", error), user => {
+        user.login should===("igrcndd")
+      }
+      )
     }
   }
 
