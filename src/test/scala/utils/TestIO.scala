@@ -18,6 +18,11 @@ import scala.util.{Failure, Success}
 
 case class TestIO[A](result: Either[HazzlenutError, A])
 
+// Trying to correlate Out with S somehow maybe with implicit
+trait TestGen[F[_], Out] {
+  def to[S](implicit s: S =:= Out): F[S]
+}
+
 object TestIO {
   implicit val twitchClient = new TwitchClient[TestIO] {
     override def fromOption[Out](
@@ -243,8 +248,7 @@ object TestIO {
   def unmarshallerEntiy[Out](testIO: TestIO[Out]): UnmarshallerEntiy[TestIO] = new UnmarshallerEntiy[TestIO]{
     override def unmarshal[T, S](entity: T)(implicit materializer: Materializer, unmarshaller: Unmarshaller[T, S]):
           TestIO[S] =
-        testIO.asInstanceOf[TestIO[S]] // Nasty cause I want to make sure that it is the same
-                                       // type at compile type, can't find a way to do it
+      testIO.asInstanceOf[TestIO[S]]
   }
 
   implicit val unmarshallerEntiy = new UnmarshallerEntiy[TestIO] {

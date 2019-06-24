@@ -5,10 +5,11 @@ import akka.http.scaladsl.model.HttpResponse
 import akka.stream.{ActorMaterializer, Materializer}
 import cats.implicits._
 import hazzlenut.errors.HazzlenutError
-import hazzlenut.errors.HazzlenutError.ThrowableError
+import hazzlenut.errors.HazzlenutError.{ThrowableError, UnableToFetchUserInformation}
 import hazzlenut.services.twitch.AccessToken
+import hazzlenut.services.twitch.model.{TwitchReply, User}
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpec}
-import utils.TestIO
+import utils.{TestGen, TestIO}
 
 import scala.concurrent.ExecutionContext
 
@@ -28,9 +29,7 @@ class TwitchClientSpec extends WordSpec with Matchers with BeforeAndAfterAll {
       implicit val httpClient = TestIO.httpClientSucess(defaultReply)
 
       val client = TestIO.twitchClient
-
       val reply = client.user(accessToken)
-
       val userOrError = reply.result
 
       userOrError.fold(
@@ -62,9 +61,7 @@ class TwitchClientSpec extends WordSpec with Matchers with BeforeAndAfterAll {
       )
 
       val client = TestIO.twitchClient
-
       val reply = client.user(accessToken)
-
       val userOrError = reply.result
 
       userOrError.fold(
@@ -78,18 +75,19 @@ class TwitchClientSpec extends WordSpec with Matchers with BeforeAndAfterAll {
     }
 
     "get user with error on unmarshelling" in {
-      val throwable = new Exception("There an error")
+      val throwable = new Exception("Couldn't parse")
 
-      implicit val httpClient = TestIO.httpClient(
+      implicit val httpClient = TestIO.httpClientSucess(defaultReply)
+
+      implicit val unmarshaller = TestIO.unmarshallerEntiy(
         TestIO(
-          Either.left[HazzlenutError, HttpResponse](ThrowableError(throwable))
+          Either
+            .left[HazzlenutError, TwitchReply[User]](ThrowableError(throwable))
         )
       )
 
       val client = TestIO.twitchClient
-
       val reply = client.user(accessToken)
-
       val userOrError = reply.result
 
       userOrError.fold(
@@ -97,7 +95,32 @@ class TwitchClientSpec extends WordSpec with Matchers with BeforeAndAfterAll {
           error match {
             case ThrowableError(t) => t should ===(throwable)
             case _                 => fail("Unknown error")
-          },
+        },
+        _ => fail("Should have failed")
+      )
+    }
+
+    "get user returning no users" in {
+      implicit val httpClient = TestIO.httpClientSucess(defaultReply)
+
+      implicit val unmarshaller = TestIO.unmarshallerEntiy(
+        TestIO(
+          Either.right[HazzlenutError, TwitchReply[User]](
+            TwitchReply(data = Array.empty[User])
+          )
+        )
+      )
+
+      val client = TestIO.twitchClient
+      val reply = client.user(accessToken)
+      val userOrError = reply.result
+
+      userOrError.fold(
+        error =>
+          error match {
+            case UnableToFetchUserInformation => succeed
+            case _                            => fail("Unknown error")
+        },
         _ => fail("Should have failed")
       )
     }
