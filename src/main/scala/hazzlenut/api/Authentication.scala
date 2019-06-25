@@ -5,14 +5,10 @@ import akka.http.scaladsl.model.{StatusCodes, Uri}
 import akka.http.scaladsl.server.Directives._
 import akka.pattern.ask
 import akka.util.Timeout
-import hazzlenut.errors.HazzlenutError
 import hazzlenut.handler.AuthenticationHandler
+import hazzlenut.handler.TwitchClientHandler.dsl._
 import hazzlenut.services.twitch.TokenGuardian.Authenticated
 import hazzlenut.services.twitch.TokenHolder.{AskAccessToken, ReplyAccessToken}
-import hazzlenut.services.twitch.TwitchClient.dsl.retrieveUser
-import hazzlenut.util.ZIORuntime.runtime
-import scalaz.zio.ZIO
-import scalaz.zio.interop.catz._
 
 import scala.concurrent.duration._
 
@@ -85,11 +81,7 @@ object Authentication {
                   onSuccess(for {
                     token <- (tokenGuardian ? AskAccessToken)
                       .mapTo[ReplyAccessToken]
-                    user <- runtime.unsafeRunToFuture(
-                      retrieveUser[ZIO[Any, HazzlenutError, ?]](
-                        token.accessToken
-                      )
-                    )
+                    user <- retrieveUser(token.accessToken)
                   } yield user) { u =>
                     complete(s"user ${u}")
                   }

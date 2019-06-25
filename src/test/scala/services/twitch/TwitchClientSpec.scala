@@ -8,8 +8,9 @@ import hazzlenut.errors.HazzlenutError
 import hazzlenut.errors.HazzlenutError.{ThrowableError, UnableToFetchUserInformation}
 import hazzlenut.services.twitch.AccessToken
 import hazzlenut.services.twitch.model.{TwitchReply, User}
+import hazzlenut.util.{HttpClient, UnmarshallerEntiy}
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpec}
-import utils.{TestGen, TestIO}
+import utils.TestIO
 
 import scala.concurrent.ExecutionContext
 
@@ -101,15 +102,17 @@ class TwitchClientSpec extends WordSpec with Matchers with BeforeAndAfterAll {
     }
 
     "get user returning no users" in {
-      implicit val httpClient = TestIO.httpClientSucess(defaultReply)
+      implicit val httpClient: HttpClient[TestIO] =
+        TestIO.httpClientSucess(defaultReply)
 
-      implicit val unmarshaller = TestIO.unmarshallerEntiy(
-        TestIO(
-          Either.right[HazzlenutError, TwitchReply[User]](
-            TwitchReply(data = Array.empty[User])
+      implicit val unmarshaller: UnmarshallerEntiy[TestIO] =
+        TestIO.unmarshallerEntiy(
+          TestIO(
+            Either.right[HazzlenutError, TwitchReply[User]](
+              TwitchReply(data = Array.empty[User])
+            )
           )
         )
-      )
 
       val client = TestIO.twitchClient
       val reply = client.user(accessToken)
