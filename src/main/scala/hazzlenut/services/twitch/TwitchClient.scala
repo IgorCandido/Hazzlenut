@@ -8,7 +8,10 @@ import akka.stream.Materializer
 import cats.implicits._
 import cats.{Monad, MonadError}
 import hazzlenut.errors.HazzlenutError
-import hazzlenut.errors.HazzlenutError.UnableToFetchUserInformation
+import hazzlenut.errors.HazzlenutError.{
+  UnableToFetchFollowers,
+  UnableToFetchUserInformation
+}
 import hazzlenut.services.twitch.model.{TwitchReply, User}
 import hazzlenut.util.{HttpClient, UnmarshallerEntiy}
 import scalaz.zio.ZIO
@@ -33,16 +36,34 @@ trait TwitchClient[F[_]] {
     monadF: Monad[F],
     monadError: MonadError[F, HazzlenutError]): F[Out] = {
     for {
+      httpResult <- doRequestSeq[Out](url, accessToken, hazzlenutError)
+      outMaybe = httpResult.headOption
+      out <- fromOption(outMaybe, hazzlenutError)
+    } yield out
+  }
+
+  protected def doRequestSeq[Out](
+    url: String,
+    accessToken: AccessToken,
+    hazzlenutError: HazzlenutError
+  )(implicit actorSystem: ActorSystem,
+    materializer: Materializer,
+    httpClient: HttpClient[F],
+    unmarshallerEntiy: UnmarshallerEntiy[F],
+    unmarshaller: Unmarshaller[ResponseEntity, TwitchReply[Out]],
+    monadF: Monad[F],
+    monadError: MonadError[F, HazzlenutError]): F[Seq[Out]] = {
+    for {
       httpResult <- httpClient.request(
-        HttpRequest(uri = "https://api.twitch.tv/helix/users")
+        HttpRequest(uri = url)
           .addCredentials(OAuth2BearerToken(accessToken.accessToken))
       )
       outMaybe <- unmarshallerEntiy
         .unmarshal[ResponseEntity, TwitchReply[Out]](httpResult.entity)
-        .map { reply =>
-          reply.data.headOption
-        }
-      out <- fromOption(outMaybe, hazzlenutError)
+      out <- fromOption[Seq[Out]](
+        Option(outMaybe.data.toSeq).filter(_.nonEmpty),
+        hazzlenutError
+      )
     } yield out
   }
 
@@ -54,6 +75,15 @@ trait TwitchClient[F[_]] {
     monadF: Monad[F],
     monadError: MonadError[F, HazzlenutError]
   ): F[User]
+
+  def followers(accessToken: AccessToken, userId: String)(
+    implicit actorSystem: ActorSystem,
+    materializer: Materializer,
+    httpClient: HttpClient[F],
+    unmarshallerEntiy: UnmarshallerEntiy[F],
+    monadF: Monad[F],
+    monadError: MonadError[F, HazzlenutError]
+  ): F[Seq[User]]
 }
 
 object TwitchClient {
@@ -80,7 +110,7 @@ object TwitchClient {
         unmarshallerEntiy: UnmarshallerEntiy[ZIO[Any, HazzlenutError, ?]],
         monadF: Monad[ZIO[Any, HazzlenutError, ?]],
         monadError: MonadError[ZIO[Any, HazzlenutError, ?], HazzlenutError]
-      ): ZIO[Any, HazzlenutError, User] = {
+      ): ZIO[Any, HazzlenutError, User] =
         for {
           user <- doRequest[User](
             "https://api.twitch.tv/helix/users",
@@ -88,17 +118,30 @@ object TwitchClient {
             UnableToFetchUserInformation
           )
         } yield user
-      }
+
+      override def followers(accessToken: AccessToken, userId: String)(
+        implicit actorSystem: ActorSystem,
+        materializer: Materializer,
+        httpClient: HttpClient[ZIO[Any, HazzlenutError, ?]],
+        unmarshallerEntiy: UnmarshallerEntiy[ZIO[Any, HazzlenutError, ?]],
+        monadF: Monad[ZIO[Any, HazzlenutError, ?]],
+        monadError: MonadError[ZIO[Any, HazzlenutError, ?], HazzlenutError]
+      ): ZIO[Any, HazzlenutError, Seq[User]] =
+        for {
+          users <- doRequestSeq[User](
+            s"https://api.twitch.tv/helix/users/follows?to_id=$userId",
+            accessToken,
+            UnableToFetchFollowers
+          )
+        } yield users
 
       override def fromOption[Out](optionOf: Option[Out],
                                    hazzlenutError: HazzlenutError)(
         implicit monadError: MonadError[ZIO[Any, HazzlenutError, ?],
                                         HazzlenutError]
-      ): ZIO[Any, HazzlenutError, Out] = {
+      ): ZIO[Any, HazzlenutError, Out] =
         ZIO
           .fromOption(optionOf)
           .mapError(_ => hazzlenutError)
-      }
     }
-
 }

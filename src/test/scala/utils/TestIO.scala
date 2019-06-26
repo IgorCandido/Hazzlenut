@@ -47,6 +47,20 @@ object TestIO {
         accessToken,
         UnableToFetchUserInformation
       )
+
+    override def followers(accessToken: AccessToken, userId: String)(
+      implicit actorSystem: ActorSystem,
+      materializer: Materializer,
+      httpClient: HttpClient[TestIO],
+      unmarshallerEntiy: UnmarshallerEntiy[TestIO],
+      monadF: Monad[TestIO],
+      monadError: MonadError[TestIO, HazzlenutError]
+    ): TestIO[Seq[User]] =
+      doRequestSeq[User](
+        "http://testUsers",
+        accessToken,
+        UnableToFetchUserInformation
+      )
   }
 
   implicit def TestIOMonad =
@@ -245,11 +259,14 @@ object TestIO {
 
     }
 
-  def unmarshallerEntiy[Out](testIO: TestIO[Out]): UnmarshallerEntiy[TestIO] = new UnmarshallerEntiy[TestIO]{
-    override def unmarshal[T, S](entity: T)(implicit materializer: Materializer, unmarshaller: Unmarshaller[T, S]):
-          TestIO[S] =
-      testIO.asInstanceOf[TestIO[S]]
-  }
+  def unmarshallerEntiy[Out](testIO: TestIO[Out]): UnmarshallerEntiy[TestIO] =
+    new UnmarshallerEntiy[TestIO] {
+      override def unmarshal[T, S](entity: T)(
+        implicit materializer: Materializer,
+        unmarshaller: Unmarshaller[T, S]
+      ): TestIO[S] =
+        testIO.asInstanceOf[TestIO[S]]
+    }
 
   implicit val unmarshallerEntiy = new UnmarshallerEntiy[TestIO] {
     override def unmarshal[T, S](entity: T)(
