@@ -1,11 +1,13 @@
 package api
 
+import akka.http.scaladsl.model.HttpResponse
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.testkit.TestProbe
 import cats.implicits._
 import hazzlenut.api.Authentication
 import hazzlenut.services.twitch.AccessToken
 import hazzlenut.services.twitch.TokenGuardian.Authenticated
+import hazzlenut.util.HttpClient
 import org.scalatest.{Matchers, WordSpecLike}
 import utils.TestIO
 
@@ -31,6 +33,10 @@ class AuthenticationSpec
         TestIO.authenticationHandlerWithValues(
           obtainOAuthValue = Future.successful(accessToken)
         )
+
+      implicit val twitchClient = TestIO.twitchClient
+      implicit val twitchHandler = TestIO.twitchHandler
+      implicit val httpClient: HttpClient[TestIO] = TestIO.defaultEmptyResponseHttpClient
 
       val authenticationRoute = Authentication.route
 

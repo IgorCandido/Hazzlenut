@@ -1,17 +1,32 @@
 package utils
 import akka.actor.ActorSystem
-import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpRequest, HttpResponse}
+import akka.http.scaladsl.model.{
+  ContentTypes,
+  HttpEntity,
+  HttpRequest,
+  HttpResponse
+}
 import akka.http.scaladsl.unmarshalling.{Unmarshal, Unmarshaller}
 import akka.stream.Materializer
 import cats.implicits._
 import cats.{Monad, MonadError}
 import hazzlenut.errors.HazzlenutError
-import hazzlenut.errors.HazzlenutError.{ThrowableError, UnableToConnect, UnableToFetchUserInformation}
-import hazzlenut.handler.AuthenticationHandler
+import hazzlenut.errors.HazzlenutError.{
+  ThrowableError,
+  UnableToConnect,
+  UnableToFetchUserInformation
+}
+import hazzlenut.handler.{AuthenticationHandler, TwitchClientHandler}
 import hazzlenut.services.twitch.model.User
-import hazzlenut.services.twitch.{AccessToken, Configuration, OAuth, TwitchClient}
+import hazzlenut.services.twitch.{
+  AccessToken,
+  Configuration,
+  OAuth,
+  TwitchClient
+}
 import hazzlenut.util.MapGetterValidation.ConfigurationValidation
 import hazzlenut.util.{HttpClient, UnmarshallerEntiy}
+import utils.TestIO.httpClientTestIO
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
@@ -23,50 +38,12 @@ trait TestGen[F[_], Out] {
   def to[S](implicit s: S =:= Out): F[S]
 }
 
-object TestIO {
-  implicit val twitchClient = new TwitchClient[TestIO] {
-    override def fromOption[Out](
-      optionOf: Option[Out],
-      hazzlenutError: HazzlenutError
-    )(implicit monadError: MonadError[TestIO, HazzlenutError]): TestIO[Out] =
-      optionOf match {
-        case None         => monadError.raiseError(hazzlenutError)
-        case Some(result) => monadError.pure[Out](result)
-      }
-
-    override def user(accessToken: AccessToken)(
-      implicit actorSystem: ActorSystem,
-      materializer: Materializer,
-      httpClient: HttpClient[TestIO],
-      unmarshallerEntiy: UnmarshallerEntiy[TestIO],
-      monadF: Monad[TestIO],
-      monadError: MonadError[TestIO, HazzlenutError]
-    ): TestIO[User] =
-      doRequest[User](
-        "http://testUser",
-        accessToken,
-        UnableToFetchUserInformation
-      )
-
-    override def followers(accessToken: AccessToken, userId: String)(
-      implicit actorSystem: ActorSystem,
-      materializer: Materializer,
-      httpClient: HttpClient[TestIO],
-      unmarshallerEntiy: UnmarshallerEntiy[TestIO],
-      monadF: Monad[TestIO],
-      monadError: MonadError[TestIO, HazzlenutError]
-    ): TestIO[Seq[User]] =
-      doRequestSeq[User](
-        "http://testUsers",
-        accessToken,
-        UnableToFetchUserInformation
-      )
-  }
-
-  implicit def TestIOMonad =
+trait TestIOMonad {
+  implicit val TestIOMonad =
     new Monad[TestIO] with MonadError[TestIO, HazzlenutError] {
       override def flatMap[A, B](fa: TestIO[A])(f: A => TestIO[B]): TestIO[B] =
         fa.result.fold(error => TestIO(Either.left(error)), a => f(a))
+
       @annotation.tailrec
       override def tailRecM[A, B](
         a: A
@@ -89,7 +66,9 @@ object TestIO {
         case result @ TestIO(Right(_)) => result
       }
     }
+}
 
+trait TestIOAuth {
   def oAuthTestIOWithValues(
     accessToken: => Either[HazzlenutError, AccessToken] = Either.right(
       AccessToken(
@@ -207,6 +186,9 @@ object TestIO {
         reAuthenticateParam()
     }
 
+}
+
+trait TestIOConfig {
   def configurationTestIOWithValues(
     config: (ConfigurationValidation[String],
              ConfigurationValidation[String],
@@ -241,6 +223,18 @@ object TestIO {
       "channel:read:subscriptions".validNel
     )
   )
+}
+
+trait TestIOHttpClient {
+  implicit def httpClientTestIO(
+    testIO: TestIO[HttpResponse]
+  )(implicit actorSystem: ActorSystem) =
+    new HttpClient[TestIO] {
+      override def request(httpRequest: HttpRequest): TestIO[HttpResponse] = {
+        testIO
+      }
+
+    }
 
   def httpClientSucess(defaultReply: String): HttpClient[TestIO] =
     httpClient(
@@ -259,6 +253,12 @@ object TestIO {
 
     }
 
+  implicit val defaultEmptyResponseHttpClient: HttpClient[TestIO] =
+    TestIO.httpClient(TestIO(Either.right(HttpResponse())))
+
+}
+
+trait TestIOUnmarshall {
   def unmarshallerEntiy[Out](testIO: TestIO[Out]): UnmarshallerEntiy[TestIO] =
     new UnmarshallerEntiy[TestIO] {
       override def unmarshal[T, S](entity: T)(
@@ -288,3 +288,99 @@ object TestIO {
     }
   }
 }
+
+trait TestIOTwitchClient {
+  def createTwitchClient(userReturn: TestIO[User] = TestIO(
+                           Either.right(
+                             UserGen()
+                           )
+                         ),
+                         followersReturn: TestIO[Seq[User]] = TestIO(Either.right(Seq(UserGen())))) =
+    new TwitchClient[TestIO] {
+      override def fromOption[Out](
+        optionOf: Option[Out],
+        hazzlenutError: HazzlenutError
+      )(implicit monadError: MonadError[TestIO, HazzlenutError]): TestIO[Out] =
+        ???
+
+      override def user(accessToken: AccessToken)(
+        implicit actorSystem: ActorSystem,
+        materializer: Materializer,
+        httpClient: HttpClient[TestIO],
+        unmarshallerEntiy: UnmarshallerEntiy[TestIO],
+        monadF: Monad[TestIO],
+        monadError: MonadError[TestIO, HazzlenutError]
+      ): TestIO[User] = userReturn
+
+      override def followers(accessToken: AccessToken, userId: String)(
+        implicit actorSystem: ActorSystem,
+        materializer: Materializer,
+        httpClient: HttpClient[TestIO],
+        unmarshallerEntiy: UnmarshallerEntiy[TestIO],
+        monadF: Monad[TestIO],
+        monadError: MonadError[TestIO, HazzlenutError]
+      ): TestIO[Seq[User]] = followersReturn
+    }
+
+  implicit val twitchClient = new TwitchClient[TestIO] {
+    override def fromOption[Out](
+      optionOf: Option[Out],
+      hazzlenutError: HazzlenutError
+    )(implicit monadError: MonadError[TestIO, HazzlenutError]): TestIO[Out] =
+      optionOf match {
+        case None         => monadError.raiseError(hazzlenutError)
+        case Some(result) => monadError.pure[Out](result)
+      }
+
+    override def user(accessToken: AccessToken)(
+      implicit actorSystem: ActorSystem,
+      materializer: Materializer,
+      httpClient: HttpClient[TestIO],
+      unmarshallerEntiy: UnmarshallerEntiy[TestIO],
+      monadF: Monad[TestIO],
+      monadError: MonadError[TestIO, HazzlenutError]
+    ): TestIO[User] =
+      doRequest[User](
+        "http://testUser",
+        accessToken,
+        UnableToFetchUserInformation
+      )
+
+    override def followers(accessToken: AccessToken, userId: String)(
+      implicit actorSystem: ActorSystem,
+      materializer: Materializer,
+      httpClient: HttpClient[TestIO],
+      unmarshallerEntiy: UnmarshallerEntiy[TestIO],
+      monadF: Monad[TestIO],
+      monadError: MonadError[TestIO, HazzlenutError]
+    ): TestIO[Seq[User]] =
+      doRequestSeq[User](
+        "http://testUsers",
+        accessToken,
+        UnableToFetchUserInformation
+      )
+  }
+
+  implicit val twitchHandler =
+    new TwitchClientHandler[TestIO] {
+      override def retrieveUser(accessToken: AccessToken)(
+        implicit twitchClient: TwitchClient[TestIO],
+        httpClient: HttpClient[TestIO],
+        actorSystem: ActorSystem,
+        materializer: Materializer
+      ): Future[User] = {
+        twitchClient
+          .user(accessToken)
+          .result
+          .fold(error => Future.failed(error), user => Future.successful(user))
+      }
+    }
+}
+
+object TestIO
+    extends TestIOMonad
+    with TestIOAuth
+    with TestIOConfig
+    with TestIOHttpClient
+    with TestIOUnmarshall
+    with TestIOTwitchClient {}

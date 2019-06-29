@@ -5,14 +5,16 @@ import akka.stream.Materializer
 import hazzlenut.errors.HazzlenutError
 import hazzlenut.services.twitch.{AccessToken, TwitchClient}
 import hazzlenut.services.twitch.model.User
+import hazzlenut.util.HttpClient
 import scalaz.zio.ZIO
 import scalaz.zio.interop.catz._
 
 import scala.concurrent.Future
 
-trait TwitchClientHandler {
+trait TwitchClientHandler[F[_]] {
   def retrieveUser(accessToken: AccessToken)(
-    implicit twitchClient: TwitchClient[ZIO[Any, HazzlenutError, ?]],
+    implicit twitchClient: TwitchClient[F],
+    httpClient: HttpClient[F],
     actorSystem: ActorSystem,
     materializer: Materializer
   ): Future[User]
@@ -20,19 +22,21 @@ trait TwitchClientHandler {
 
 object TwitchClientHandler {
   object dsl {
-    def retrieveUser(accessToken: AccessToken)(
-      implicit twitchClientHandler: TwitchClientHandler,
-      twitchClient: TwitchClient[ZIO[Any, HazzlenutError, ?]],
+    def retrieveUser[F[_]](accessToken: AccessToken)(
+      implicit twitchClientHandler: TwitchClientHandler[F],
+      twitchClient: TwitchClient[F],
+      httpClient: HttpClient[F],
       actorSystem: ActorSystem,
       materializer: Materializer
     ): Future[User] = twitchClientHandler.retrieveUser(accessToken)
   }
 
-  implicit val twitchClientHandlerZIO = new TwitchClientHandler {
+  implicit val twitchClientHandlerZIO = new TwitchClientHandler[ZIO[Any, HazzlenutError, ?]] {
     import hazzlenut.util.ZIORuntime._
 
     override def retrieveUser(accessToken: AccessToken)(
       implicit twitchClient: TwitchClient[ZIO[Any, HazzlenutError, ?]],
+      httpClient: HttpClient[ZIO[Any, HazzlenutError, ?]],
       actorSystem: ActorSystem,
       materializer: Materializer
     ): Future[User] = {

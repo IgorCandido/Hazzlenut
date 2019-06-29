@@ -1,24 +1,32 @@
 package hazzlenut.api
 
-import akka.actor.ActorRef
+import akka.actor.{ActorRef, ActorSystem}
 import akka.http.scaladsl.model.{StatusCodes, Uri}
 import akka.http.scaladsl.server.Directives._
 import akka.pattern.ask
 import akka.util.Timeout
-import hazzlenut.handler.AuthenticationHandler
+import hazzlenut.errors.HazzlenutError
+import hazzlenut.handler.{AuthenticationHandler, TwitchClientHandler}
 import hazzlenut.handler.TwitchClientHandler.dsl._
 import hazzlenut.services.twitch.TokenGuardian.Authenticated
 import hazzlenut.services.twitch.TokenHolder.{AskAccessToken, ReplyAccessToken}
+import hazzlenut.services.twitch.TwitchClient
+import hazzlenut.util.HttpClient
+import scalaz.zio.ZIO
 
 import scala.concurrent.duration._
 
 object Authentication {
 
-  def publicRoute(implicit tokenGuardian: ActorRef) = {
-    route
+  def publicRoute(implicit tokenGuardian: ActorRef,
+                  actorSystem: ActorSystem) = {
+    route[ZIO[Any, HazzlenutError, ?]]
   }
 
-  def route(implicit a: AuthenticationHandler, tokenGuardian: ActorRef) = {
+  def route[F[_]: TwitchClientHandler: TwitchClient: HttpClient](
+    implicit a: AuthenticationHandler,
+    tokenGuardian: ActorRef
+  ) = {
     import AuthenticationHandler.dsl._
     get {
       pathPrefix("oauth") {
