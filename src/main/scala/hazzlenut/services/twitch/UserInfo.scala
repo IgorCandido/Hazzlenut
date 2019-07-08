@@ -6,18 +6,16 @@ import akka.stream.ActorMaterializer
 import hazzlenut.handler.TwitchClientHandler
 import hazzlenut.handler.TwitchClientHandler.dsl._
 import hazzlenut.services.twitch.TokenHolder.{AskAccessToken, ReplyAccessToken}
-import hazzlenut.services.twitch.UserInfo.{ProvideUser, RetrieveUserId}
+import hazzlenut.services.twitch.UserInfo.{ProvideUser, RetrieveUser}
 import hazzlenut.services.twitch.model.User
 import hazzlenut.util.HttpClient
-
-import scala.util.Success
 
 object UserInfo {
   def props[F[_]: TwitchClientHandler: TwitchClient: HttpClient](
     tokenHolder: ActorRef
-  ) = Props(new UserInfo(tokenHolder))
+  ): Props = Props(new UserInfo(tokenHolder))
 
-  case object RetrieveUserId
+  case object RetrieveUser
   case class ProvideUser(user: User)
 }
 
@@ -35,7 +33,7 @@ class UserInfo[F[_]: TwitchClientHandler: TwitchClient: HttpClient](
   override def receive: Receive = Actor.emptyBehavior
 
   def providingUser(user: User): Receive = {
-    case RetrieveUserId =>
+    case RetrieveUser =>
       sender ! ProvideUser(user)
   }
 

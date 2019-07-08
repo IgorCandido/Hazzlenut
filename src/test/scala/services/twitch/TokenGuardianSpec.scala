@@ -27,6 +27,7 @@ class TokenGuardianSpec
       )
 
       val tokenHolderProbe = TestProbe()
+      implicit val userInfoInitalizer = TestIO.userInfoInitializer(tokenHolderProbe.ref)
       var authenticateUser = 0
 
       implicit val authenticationHandler =
@@ -69,6 +70,7 @@ class TokenGuardianSpec
       )
 
       val tokenHolderProbe = TestProbe()
+      implicit val userInfoInitalizer = TestIO.userInfoInitializer(tokenHolderProbe.ref)
 
       implicit val authenticationHandler =
         TestIO.authenticationHandlerWithValues(reAuthenticateParam = () => {
@@ -113,6 +115,7 @@ class TokenGuardianSpec
       )
 
       val tokenHolderProbe = TestProbe()
+      implicit val userInfoInitalizer = TestIO.userInfoInitializerWithActor(tokenHolderProbe.ref)
 
       implicit val authenticationHandler =
         TestIO.authenticationHandlerWithValues(reAuthenticateParam = () => {
@@ -154,6 +157,7 @@ class TokenGuardianSpec
       )
 
       val tokenHolderProbe = TestProbe()
+      implicit val userInfoInitalizer = TestIO.userInfoInitializer(tokenHolderProbe.ref)
       var authenticateUser = 0
 
       implicit val authenticationHandler =
@@ -200,6 +204,7 @@ class TokenGuardianSpec
       )
 
       val tokenHolderProbe = TestProbe()
+      implicit val userInfoInitalizer = TestIO.userInfoInitializerWithActor(tokenHolderProbe.ref)
       var authenticateUser = 0
 
       implicit val authenticationHandler =
@@ -243,6 +248,7 @@ class TokenGuardianSpec
       )
 
       val tokenHolderProbe = TestProbe()
+      implicit val userInfoInitalizer = TestIO.userInfoInitializerWithActor(tokenHolderProbe.ref)
       var authenticateUser = 0
 
       implicit val authenticationHandler =

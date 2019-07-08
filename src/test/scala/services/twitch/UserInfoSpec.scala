@@ -9,7 +9,7 @@ import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
 import utils.{TestIO, UserGen}
 import utils.TestIO._
 import cats.implicits._
-import hazzlenut.services.twitch.UserInfo.{ProvideUser, RetrieveUserId}
+import hazzlenut.services.twitch.UserInfo.{ProvideUser, RetrieveUser}
 
 import concurrent.duration._
 
@@ -44,7 +44,7 @@ class UserInfoSpec extends TestKit(ActorSystem("UserInfoSpec"))
       userInfo.tell(ReplyAccessToken(dummyAccessToken), probe.ref)
 
       awaitAssert {
-        userInfo.tell(RetrieveUserId, probe.ref)
+        userInfo.tell(RetrieveUser, probe.ref)
         probe.expectMsg(10 millis, ProvideUser(user))
       }
     }

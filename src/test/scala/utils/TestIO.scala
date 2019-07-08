@@ -1,5 +1,5 @@
 package utils
-import akka.actor.ActorSystem
+import akka.actor.{ActorContext, ActorRef, ActorSystem}
 import akka.http.scaladsl.model.{
   ContentTypes,
   HttpEntity,
@@ -22,7 +22,9 @@ import hazzlenut.services.twitch.{
   AccessToken,
   Configuration,
   OAuth,
-  TwitchClient
+  TwitchClient,
+  UserInfo,
+  UserInfoInitializer
 }
 import hazzlenut.util.MapGetterValidation.ConfigurationValidation
 import hazzlenut.util.{HttpClient, UnmarshallerEntiy}
@@ -290,12 +292,10 @@ trait TestIOUnmarshall {
 }
 
 trait TestIOTwitchClient {
-  def createTwitchClient(userReturn: TestIO[User] = TestIO(
-                           Either.right(
-                             UserGen()
-                           )
-                         ),
-                         followersReturn: TestIO[Seq[User]] = TestIO(Either.right(Seq(UserGen())))) =
+  def createTwitchClient(
+    userReturn: TestIO[User] = TestIO(Either.right(UserGen())),
+    followersReturn: TestIO[Seq[User]] = TestIO(Either.right(Seq(UserGen())))
+  ) =
     new TwitchClient[TestIO] {
       override def fromOption[Out](
         optionOf: Option[Out],
@@ -377,10 +377,49 @@ trait TestIOTwitchClient {
     }
 }
 
+trait TestIOUserInfoInitializer {
+  type UserInfoInitializerType = (ActorContext,
+                                  TwitchClientHandler[TestIO],
+                                  TwitchClient[TestIO],
+                                  HttpClient[TestIO]) => ActorRef
+
+  implicit def dummyActorRef(actorRef: ActorRef) =
+    (_: ActorContext,
+     _: TwitchClientHandler[TestIO],
+     _: TwitchClient[TestIO],
+     _: HttpClient[TestIO]) => actorRef
+
+  def userInfoInitializer(tokenHolder: ActorRef) =
+    userInfoInitializerWithActor(
+      (context: ActorContext,
+       _: TwitchClientHandler[TestIO],
+       _: TwitchClient[TestIO],
+       _: HttpClient[TestIO]) =>
+        context.actorOf(UserInfo.props[TestIO](tokenHolder))
+    )
+
+  def userInfoInitializerWithActor(actorRefGenerator: UserInfoInitializerType) =
+    new UserInfoInitializer[TestIO] {
+      override def initializeUserInfo(tokenHolder: ActorRef)(
+        implicit context: ActorContext,
+        twitchClientHandler: TwitchClientHandler[TestIO],
+        twitchClient: TwitchClient[TestIO],
+        httpClient: HttpClient[TestIO]
+      ): ActorRef =
+        actorRefGenerator(
+          context,
+          twitchClientHandler,
+          twitchClient,
+          httpClient
+        )
+    }
+}
+
 object TestIO
     extends TestIOMonad
     with TestIOAuth
     with TestIOConfig
     with TestIOHttpClient
     with TestIOUnmarshall
-    with TestIOTwitchClient {}
+    with TestIOTwitchClient
+    with TestIOUserInfoInitializer {}
