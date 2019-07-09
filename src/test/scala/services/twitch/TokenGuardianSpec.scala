@@ -2,19 +2,20 @@ package services.twitch
 
 import akka.actor.{ActorContext, ActorRef, ActorSystem, PoisonPill}
 import akka.testkit.{TestKit, TestProbe}
-import hazzlenut.handler.AuthenticationHandler
-import hazzlenut.services.twitch.{AccessToken, TokenGuardian, TokenHolder, TokenHolderInitializer}
-import org.scalatest.{Matchers, WordSpecLike}
+import hazzlenut.handler.{AuthenticationHandler, TwitchClientHandler}
+import hazzlenut.services.twitch.{AccessToken, TokenGuardian, TokenHolder, TokenHolderInitializer, TwitchClient, UserInfoInitializer}
+import org.scalatest.{AsyncWordSpecLike, Matchers, WordSpecLike}
 import utils.TestIO
 import cats.implicits._
 import hazzlenut.services.twitch.TokenGuardian.{ApplicationStarted, Authenticated}
 import hazzlenut.services.twitch.TokenHolder.AskAccessToken
+import hazzlenut.util.HttpClient
 
 import scala.concurrent.duration._
 
 class TokenGuardianSpec
     extends TestKit(ActorSystem("TokenGuardianSpec"))
-    with WordSpecLike
+    with AsyncWordSpecLike
     with Matchers {
 
   "Token Guardian" should {
@@ -27,7 +28,8 @@ class TokenGuardianSpec
       )
 
       val tokenHolderProbe = TestProbe()
-      implicit val userInfoInitalizer = TestIO.userInfoInitializer(tokenHolderProbe.ref)
+      implicit val userInfoInitalizer =
+        TestIO.userInfoInitializer(tokenHolderProbe.ref)
       var authenticateUser = 0
 
       implicit val authenticationHandler =
@@ -55,7 +57,7 @@ class TokenGuardianSpec
 
       guardian ! Authenticated(accessToken)
 
-      awaitAssert(() => {
+      awaitAssert({
         tokenHolderInitializer.numberTokenHolderCreated should ===(1)
         authenticateUser should ===(1)
       }, 200 millis)
@@ -70,7 +72,8 @@ class TokenGuardianSpec
       )
 
       val tokenHolderProbe = TestProbe()
-      implicit val userInfoInitalizer = TestIO.userInfoInitializer(tokenHolderProbe.ref)
+      implicit val userInfoInitalizer =
+        TestIO.userInfoInitializer(tokenHolderProbe.ref)
 
       implicit val authenticationHandler =
         TestIO.authenticationHandlerWithValues(reAuthenticateParam = () => {
@@ -82,9 +85,9 @@ class TokenGuardianSpec
 
         override def initializeTokenHolder(accessToken: AccessToken,
                                            self: ActorRef)(
-                                            implicit context: ActorContext,
-                                            authenticationHandler: AuthenticationHandler
-                                          ): ActorRef = {
+          implicit context: ActorContext,
+          authenticationHandler: AuthenticationHandler
+        ): ActorRef = {
           numberTokenHolderCreated += 1
           tokenHolderProbe.ref
         }
@@ -100,7 +103,7 @@ class TokenGuardianSpec
 
       guardian ! Authenticated(accessToken)
 
-      awaitAssert{
+      awaitAssert {
         tokenHolderProbe.expectMsg(AskAccessToken)
         tokenHolderProbe.lastSender should ===(customer.ref)
       }
@@ -115,7 +118,8 @@ class TokenGuardianSpec
       )
 
       val tokenHolderProbe = TestProbe()
-      implicit val userInfoInitalizer = TestIO.userInfoInitializerWithActor(tokenHolderProbe.ref)
+      implicit val userInfoInitalizer =
+        TestIO.userInfoInitializerWithActor(tokenHolderProbe.ref)
 
       implicit val authenticationHandler =
         TestIO.authenticationHandlerWithValues(reAuthenticateParam = () => {
@@ -127,9 +131,9 @@ class TokenGuardianSpec
 
         override def initializeTokenHolder(accessToken: AccessToken,
                                            self: ActorRef)(
-                                            implicit context: ActorContext,
-                                            authenticationHandler: AuthenticationHandler
-                                          ): ActorRef = {
+          implicit context: ActorContext,
+          authenticationHandler: AuthenticationHandler
+        ): ActorRef = {
           numberTokenHolderCreated += 1
           tokenHolderProbe.ref
         }
@@ -146,6 +150,9 @@ class TokenGuardianSpec
       guardian ! Authenticated(accessToken)
 
       tokenHolderProbe.expectNoMessage(500 millis)
+
+      // Hack
+      succeed
     }
 
     "Receive token cannot be renewed" in {
@@ -157,7 +164,8 @@ class TokenGuardianSpec
       )
 
       val tokenHolderProbe = TestProbe()
-      implicit val userInfoInitalizer = TestIO.userInfoInitializer(tokenHolderProbe.ref)
+      implicit val userInfoInitalizer =
+        TestIO.userInfoInitializer(tokenHolderProbe.ref)
       var authenticateUser = 0
 
       implicit val authenticationHandler =
@@ -171,9 +179,9 @@ class TokenGuardianSpec
 
         override def initializeTokenHolder(accessToken: AccessToken,
                                            self: ActorRef)(
-                                            implicit context: ActorContext,
-                                            authenticationHandler: AuthenticationHandler
-                                          ): ActorRef = {
+          implicit context: ActorContext,
+          authenticationHandler: AuthenticationHandler
+        ): ActorRef = {
           numberTokenHolderCreated += 1
           tokenHolderProbe.ref
         }
@@ -204,7 +212,8 @@ class TokenGuardianSpec
       )
 
       val tokenHolderProbe = TestProbe()
-      implicit val userInfoInitalizer = TestIO.userInfoInitializerWithActor(tokenHolderProbe.ref)
+      implicit val userInfoInitalizer =
+        TestIO.userInfoInitializerWithActor(tokenHolderProbe.ref)
       var authenticateUser = 0
 
       implicit val authenticationHandler =
@@ -218,9 +227,9 @@ class TokenGuardianSpec
 
         override def initializeTokenHolder(accessToken: AccessToken,
                                            self: ActorRef)(
-                                            implicit context: ActorContext,
-                                            authenticationHandler: AuthenticationHandler
-                                          ): ActorRef = {
+          implicit context: ActorContext,
+          authenticationHandler: AuthenticationHandler
+        ): ActorRef = {
           numberTokenHolderCreated += 1
           tokenHolderProbe.ref
         }
@@ -230,7 +239,6 @@ class TokenGuardianSpec
       guardian ! ApplicationStarted
 
       guardian ! Authenticated(accessToken)
-
 
       val customer = TestProbe()
 
@@ -248,7 +256,8 @@ class TokenGuardianSpec
       )
 
       val tokenHolderProbe = TestProbe()
-      implicit val userInfoInitalizer = TestIO.userInfoInitializerWithActor(tokenHolderProbe.ref)
+      implicit val userInfoInitalizer =
+        TestIO.userInfoInitializerWithActor(tokenHolderProbe.ref)
       var authenticateUser = 0
 
       implicit val authenticationHandler =
@@ -262,9 +271,9 @@ class TokenGuardianSpec
 
         override def initializeTokenHolder(accessToken: AccessToken,
                                            self: ActorRef)(
-                                            implicit context: ActorContext,
-                                            authenticationHandler: AuthenticationHandler
-                                          ): ActorRef = {
+          implicit context: ActorContext,
+          authenticationHandler: AuthenticationHandler
+        ): ActorRef = {
           numberTokenHolderCreated += 1
           tokenHolderProbe.ref
         }
@@ -280,6 +289,64 @@ class TokenGuardianSpec
       guardian.tell(TokenHolder.TokenExpiredNeedNew, customer.ref)
       tokenHolderProbe.expectMsg(TokenHolder.TokenExpiredNeedNew)
       tokenHolderProbe.lastSender should ===(customer.ref)
+    }
+
+    "Create the UserInfo" in {
+      val accessToken = AccessToken(
+        accessToken = "Token",
+        tokenType = "bearer",
+        expiresIn = 3500,
+        refreshToken = "refreshToken".some
+      )
+
+      val tokenHolderProbe = TestProbe()
+
+      val userInfoProbe = TestProbe()
+
+      implicit val userInfoInitalizer = new UserInfoInitializer[TestIO] {
+        var numberUserInfoInitialized = 0
+        override def initializeUserInfo(tokenHolder: ActorRef)(
+          implicit context: ActorContext,
+          twitchClientHandler: TwitchClientHandler[TestIO],
+          twitchClient: TwitchClient[TestIO],
+          httpClient: HttpClient[TestIO]
+        ): ActorRef = {
+          numberUserInfoInitialized += 1
+          userInfoProbe.ref
+        }
+      }
+      var authenticateUser = 0
+
+      implicit val authenticationHandler =
+        TestIO.authenticationHandlerWithValues(reAuthenticateParam = () => {
+          authenticateUser += 1
+
+          Either.right(Unit)
+        })
+
+      implicit val tokenHolderInitializer = new TokenHolderInitializer {
+        var numberTokenHolderCreated = 0
+
+        override def initializeTokenHolder(accessToken: AccessToken,
+                                           self: ActorRef)(
+          implicit context: ActorContext,
+          authenticationHandler: AuthenticationHandler
+        ): ActorRef = {
+          numberTokenHolderCreated += 1
+          tokenHolderProbe.ref
+        }
+      }
+
+      val guardian = system.actorOf(TokenGuardian.props)
+      guardian ! ApplicationStarted
+
+      guardian ! Authenticated(accessToken)
+
+      awaitAssert({
+        tokenHolderInitializer.numberTokenHolderCreated should ===(1)
+        userInfoInitalizer.numberUserInfoInitialized should ===(1)
+        authenticateUser should ===(1)
+      }, 200 millis)
     }
   }
 }
