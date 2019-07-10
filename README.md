@@ -1,9 +1,12 @@
 Work list:
 
-- Workout a way to hold user data (mainly to keep the userId for future calls to the api) - Likely same actor as the token or new actor
-    - TokenGuardian behaviour creating and destroying userInfo
-    - Write tests for userInfo <-> tokenGuardian <-> tokenHolder
+- Look into getting a token expired error from twitch and asking for renew of token
+    - Understand how error on token expired would be bubbled up
 - Implement twitch get followers (for now polling)
+    - Implemented with actor
+    - Asks UserInfo
+    - Asks Token
+    - When Token can't be renewed should die and be resurected when token starts again
 - Understand if we need to drop user info when the we get new OAuthToken (not refresh but re-authenticate)
 - Write the flow for get followers on a cycle and then publish those to whoever is interested (Events and likely actor on a schedule)
 - Refactor twitch get followers (web sockets)

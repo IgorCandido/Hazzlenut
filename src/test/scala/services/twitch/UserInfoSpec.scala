@@ -33,7 +33,7 @@ class UserInfoSpec extends TestKit(ActorSystem("UserInfoSpec"))
     "Ask for the user when it receives the token" in {
       val probe = TestProbe()
 
-      val user = UserGen()
+      val user = UserGen.getSample()
 
       implicit val twitchClient = TestIO.createTwitchClient(userReturn = TestIO[User](Either.right(user)))
 

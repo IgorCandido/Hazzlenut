@@ -1,15 +1,15 @@
 package services.twitch
 
-import akka.actor.{ActorContext, ActorRef, ActorSystem, PoisonPill}
+import akka.actor.{ActorContext, ActorRef, ActorSystem}
 import akka.testkit.{TestKit, TestProbe}
-import hazzlenut.handler.{AuthenticationHandler, TwitchClientHandler}
-import hazzlenut.services.twitch.{AccessToken, TokenGuardian, TokenHolder, TokenHolderInitializer, TwitchClient, UserInfoInitializer}
-import org.scalatest.{AsyncWordSpecLike, Matchers, WordSpecLike}
-import utils.TestIO
 import cats.implicits._
+import hazzlenut.handler.{AuthenticationHandler, TwitchClientHandler}
 import hazzlenut.services.twitch.TokenGuardian.{ApplicationStarted, Authenticated}
 import hazzlenut.services.twitch.TokenHolder.AskAccessToken
+import hazzlenut.services.twitch._
 import hazzlenut.util.HttpClient
+import org.scalatest.{AsyncWordSpecLike, Matchers}
+import utils.{AccessTokenGen, TestIO}
 
 import scala.concurrent.duration._
 
@@ -20,12 +20,7 @@ class TokenGuardianSpec
 
   "Token Guardian" should {
     "Create token holder when it starts" in {
-      val accessToken = AccessToken(
-        accessToken = "Token",
-        tokenType = "bearer",
-        expiresIn = 3500,
-        refreshToken = "refreshToken".some
-      )
+      val accessToken = AccessTokenGen.sample()
 
       val tokenHolderProbe = TestProbe()
       implicit val userInfoInitalizer =
@@ -64,12 +59,7 @@ class TokenGuardianSpec
     }
 
     "Send messages queued whilst getting first access token" in {
-      val accessToken = AccessToken(
-        accessToken = "Token",
-        tokenType = "bearer",
-        expiresIn = 3500,
-        refreshToken = "refreshToken".some
-      )
+      val accessToken = AccessTokenGen.sample()
 
       val tokenHolderProbe = TestProbe()
       implicit val userInfoInitalizer =
@@ -110,12 +100,7 @@ class TokenGuardianSpec
     }
 
     "Not send Token expired messages whilst getting first access token" in {
-      val accessToken = AccessToken(
-        accessToken = "Token",
-        tokenType = "bearer",
-        expiresIn = 3500,
-        refreshToken = "refreshToken".some
-      )
+      val accessToken = AccessTokenGen.sample()
 
       val tokenHolderProbe = TestProbe()
       implicit val userInfoInitalizer =
@@ -156,12 +141,7 @@ class TokenGuardianSpec
     }
 
     "Receive token cannot be renewed" in {
-      val accessToken = AccessToken(
-        accessToken = "Token",
-        tokenType = "bearer",
-        expiresIn = 3500,
-        refreshToken = "refreshToken".some
-      )
+      val accessToken = AccessTokenGen.sample()
 
       val tokenHolderProbe = TestProbe()
       implicit val userInfoInitalizer =
@@ -204,12 +184,7 @@ class TokenGuardianSpec
     }
 
     "Route messages to TokenHolder when working normally" in {
-      val accessToken = AccessToken(
-        accessToken = "Token",
-        tokenType = "bearer",
-        expiresIn = 3500,
-        refreshToken = "refreshToken".some
-      )
+      val accessToken = AccessTokenGen.sample()
 
       val tokenHolderProbe = TestProbe()
       implicit val userInfoInitalizer =
@@ -248,12 +223,7 @@ class TokenGuardianSpec
     }
 
     "Route tokenExpired to TokenHolder when working normally" in {
-      val accessToken = AccessToken(
-        accessToken = "Token",
-        tokenType = "bearer",
-        expiresIn = 3500,
-        refreshToken = "refreshToken".some
-      )
+      val accessToken = AccessTokenGen.sample()
 
       val tokenHolderProbe = TestProbe()
       implicit val userInfoInitalizer =
@@ -292,12 +262,7 @@ class TokenGuardianSpec
     }
 
     "Create the UserInfo" in {
-      val accessToken = AccessToken(
-        accessToken = "Token",
-        tokenType = "bearer",
-        expiresIn = 3500,
-        refreshToken = "refreshToken".some
-      )
+      val accessToken = AccessTokenGen.sample()
 
       val tokenHolderProbe = TestProbe()
 
@@ -347,6 +312,54 @@ class TokenGuardianSpec
         userInfoInitalizer.numberUserInfoInitialized should ===(1)
         authenticateUser should ===(1)
       }, 200 millis)
+    }
+
+    "Kill the UserInfo when we need to re-authenticate" in {
+      val accessToken = AccessTokenGen.sample()
+
+      val tokenHolderProbe = TestProbe()
+
+      val userInfoProbe = TestProbe()
+
+      implicit val userInfoInitalizer = new UserInfoInitializer[TestIO] {
+        var numberUserInfoInitialized = 0
+        override def initializeUserInfo(tokenHolder: ActorRef)(
+          implicit context: ActorContext,
+          twitchClientHandler: TwitchClientHandler[TestIO],
+          twitchClient: TwitchClient[TestIO],
+          httpClient: HttpClient[TestIO]
+        ): ActorRef = {
+          numberUserInfoInitialized += 1
+          userInfoProbe.ref
+        }
+      }
+      var authenticateUser = 0
+
+      implicit val authenticationHandler =
+        TestIO.authenticationHandlerWithValues(reAuthenticateParam = () => {
+          authenticateUser += 1
+
+          Either.right(Unit)
+        })
+
+      val guardian = system.actorOf(TokenGuardian.props)
+      guardian ! ApplicationStarted
+
+      guardian ! Authenticated(accessToken)
+
+      awaitAssert({
+        userInfoInitalizer.numberUserInfoInitialized should ===(1)
+        authenticateUser should ===(1)
+      }, 200 millis)
+
+      val watcher = TestProbe()
+
+      watcher.watch(userInfoProbe.ref)
+
+      guardian.tell(TokenGuardian.CantRenewToken, tokenHolderProbe.ref)
+      watcher.expectTerminated(userInfoProbe.ref)
+
+      succeed
     }
   }
 }
