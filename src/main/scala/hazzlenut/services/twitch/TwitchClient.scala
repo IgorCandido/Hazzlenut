@@ -2,13 +2,19 @@ package hazzlenut.services.twitch
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.headers.OAuth2BearerToken
-import akka.http.scaladsl.model.{HttpRequest, ResponseEntity}
+import akka.http.scaladsl.model.{
+  HttpRequest,
+  HttpResponse,
+  ResponseEntity,
+  StatusCodes
+}
 import akka.http.scaladsl.unmarshalling.Unmarshaller
 import akka.stream.Materializer
 import cats.implicits._
 import cats.{Monad, MonadError}
 import hazzlenut.errors.HazzlenutError
 import hazzlenut.errors.HazzlenutError.{
+  UnableToAuthenticate,
   UnableToFetchFollowers,
   UnableToFetchUserInformation
 }
@@ -19,6 +25,17 @@ import scalaz.zio.ZIO
 // TODO Move the logic into the type class (polymorphic)
 
 trait TwitchClient[F[_]] {
+
+  def handleUnAuthorized(
+    reply: HttpResponse
+  )(implicit monadError: MonadError[F, HazzlenutError]): F[HttpResponse] = {
+    reply.status match {
+      case StatusCodes.Unauthorized =>
+        monadError.raiseError(UnableToAuthenticate)
+      case _ => monadError.pure(reply)
+    }
+
+  }
 
   def fromOption[Out](optionOf: Option[Out], hazzlenutError: HazzlenutError)(
     implicit monadError: MonadError[F, HazzlenutError]
