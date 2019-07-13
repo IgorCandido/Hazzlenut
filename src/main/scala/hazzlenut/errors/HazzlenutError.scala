@@ -18,6 +18,8 @@ object HazzlenutError{
   final case object UnableToConnect extends HazzlenutError
 
   final case object UnableToAuthenticate extends HazzlenutError
+
+  final case class UnmarshallError(throwable: Throwable) extends HazzlenutError
 }
 
 

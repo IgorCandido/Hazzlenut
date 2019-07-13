@@ -2,6 +2,8 @@ Work list:
 
 - Look into getting a token expired error from twitch and asking for renew of token
     - Test what happens with a 4xx and 5xx on the TwitchClient getting the HttpResponse
+        - Handle HttpConnectionError with ConnectionError(throwable), 
+            create the Hazzlenut error for and handle it with the monadError
 - Implement twitch get followers (for now polling)
     - Implemented with actor
     - Asks UserInfo

@@ -1,16 +1,20 @@
 package services.twitch
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.model.HttpResponse
+import akka.http.scaladsl.model.{HttpResponse, StatusCodes}
 import akka.stream.{ActorMaterializer, Materializer}
+import cats.MonadError
+import cats.effect.IO
 import cats.implicits._
 import hazzlenut.errors.HazzlenutError
-import hazzlenut.errors.HazzlenutError.{ThrowableError, UnableToFetchUserInformation}
+import hazzlenut.errors.HazzlenutError.{ThrowableError, UnableToAuthenticate, UnableToFetchUserInformation, UnmarshallError}
 import hazzlenut.services.twitch.AccessToken
 import hazzlenut.services.twitch.model.{TwitchReply, User}
 import hazzlenut.util.{HttpClient, UnmarshallerEntiy}
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpec}
 import utils.TestIO
+import scalaz.zio.ZIO
+
 
 import scala.concurrent.ExecutionContext
 
@@ -74,6 +78,50 @@ class TwitchClientSpec extends WordSpec with Matchers with BeforeAndAfterAll {
         _ => fail("Should have failed")
       )
     }
+    "get user with unAuthorized" in {
+
+      implicit val httpClient = TestIO.httpClientWithCustomStatusCode(
+        "UnAuthorized",
+        StatusCodes.Unauthorized
+      )
+
+      val client = TestIO.twitchClient
+      val reply = client.user(accessToken)
+      val userOrError = reply.result
+
+      userOrError.fold(
+        error =>
+          error match {
+            case UnableToAuthenticate => succeed
+            case _                    => fail("Unknown error")
+        },
+        _ => fail("Should have failed")
+      )
+    }
+
+    "get user with BadRequest" in {
+
+      val `400Reply` =
+        "{\n\"error\": \"Bad Request\",\n\"status\": 400,\n\"message\": \"Must provide either from_id or to_id\"\n}"
+
+      implicit val httpClient = TestIO.httpClientWithCustomStatusCode(
+        `400Reply`,
+        StatusCodes.BadRequest
+      )
+
+      val client = TestIO.twitchClient
+      val reply = client.user(accessToken)
+      val userOrError = reply.result
+
+      userOrError.fold(
+        error =>
+          error match {
+            case UnmarshallError(_) => succeed
+            case _                    => fail("Unknown error")
+        },
+        _ => fail("Should have failed")
+      )
+    }
 
     "get user with error on unmarshelling" in {
       val throwable = new Exception("Couldn't parse")
@@ -94,7 +142,7 @@ class TwitchClientSpec extends WordSpec with Matchers with BeforeAndAfterAll {
       userOrError.fold(
         error =>
           error match {
-            case ThrowableError(t) => t should ===(throwable)
+            case UnmarshallError(t) => t should ===(throwable)
             case _                 => fail("Unknown error")
         },
         _ => fail("Should have failed")

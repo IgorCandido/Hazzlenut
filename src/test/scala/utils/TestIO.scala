@@ -1,31 +1,15 @@
 package utils
 import akka.actor.{ActorContext, ActorRef, ActorSystem}
-import akka.http.scaladsl.model.{
-  ContentTypes,
-  HttpEntity,
-  HttpRequest,
-  HttpResponse
-}
+import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpRequest, HttpResponse, StatusCode, StatusCodes}
 import akka.http.scaladsl.unmarshalling.{Unmarshal, Unmarshaller}
 import akka.stream.Materializer
 import cats.implicits._
 import cats.{Monad, MonadError}
 import hazzlenut.errors.HazzlenutError
-import hazzlenut.errors.HazzlenutError.{
-  ThrowableError,
-  UnableToConnect,
-  UnableToFetchUserInformation
-}
+import hazzlenut.errors.HazzlenutError.{ThrowableError, UnableToConnect, UnableToFetchUserInformation}
 import hazzlenut.handler.{AuthenticationHandler, TwitchClientHandler}
 import hazzlenut.services.twitch.model.User
-import hazzlenut.services.twitch.{
-  AccessToken,
-  Configuration,
-  OAuth,
-  TwitchClient,
-  UserInfo,
-  UserInfoInitializer
-}
+import hazzlenut.services.twitch.{AccessToken, Configuration, OAuth, TwitchClient, UserInfo, UserInfoInitializer}
 import hazzlenut.util.MapGetterValidation.ConfigurationValidation
 import hazzlenut.util.{HttpClient, UnmarshallerEntiy}
 import utils.TestIO.httpClientTestIO
@@ -238,15 +222,23 @@ trait TestIOHttpClient {
 
     }
 
-  def httpClientSucess(defaultReply: String): HttpClient[TestIO] =
+  def httpClientWithCustomStatusCode(
+    reply: String,
+    statusCode: StatusCode
+  ): HttpClient[TestIO] = {
     httpClient(
       implicitly[MonadError[TestIO, HazzlenutError]]
         .pure(
           HttpResponse(
-            entity = HttpEntity(ContentTypes.`application/json`, defaultReply)
+            entity = HttpEntity(ContentTypes.`application/json`, reply),
+            status = statusCode
           )
         )
     )
+  }
+
+  def httpClientSucess(defaultReply: String): HttpClient[TestIO] =
+    httpClientWithCustomStatusCode(defaultReply, StatusCodes.OK)
 
   implicit def httpClient(testIO: TestIO[HttpResponse]) =
     new HttpClient[TestIO] {
@@ -263,7 +255,7 @@ trait TestIOHttpClient {
 trait TestIOUnmarshall {
   def unmarshallerEntiy[Out](testIO: TestIO[Out]): UnmarshallerEntiy[TestIO] =
     new UnmarshallerEntiy[TestIO] {
-      override def unmarshal[T, S](entity: T)(
+      override def unmarshalInternal[T, S](entity: T)(
         implicit materializer: Materializer,
         unmarshaller: Unmarshaller[T, S]
       ): TestIO[S] =
@@ -271,7 +263,7 @@ trait TestIOUnmarshall {
     }
 
   implicit val unmarshallerEntiy = new UnmarshallerEntiy[TestIO] {
-    override def unmarshal[T, S](entity: T)(
+    override def unmarshalInternal[T, S](entity: T)(
       implicit materializer: Materializer,
       unmarshaller: Unmarshaller[T, S]
     ): TestIO[S] = {
@@ -294,7 +286,9 @@ trait TestIOUnmarshall {
 trait TestIOTwitchClient {
   def createTwitchClient(
     userReturn: => TestIO[User] = TestIO(Either.right(UserGen.getSample())),
-    followersReturn: TestIO[Seq[User]] = TestIO(Either.right(Seq(UserGen.getSample())))
+    followersReturn: TestIO[Seq[User]] = TestIO(
+      Either.right(Seq(UserGen.getSample()))
+    )
   ) =
     new TwitchClient[TestIO] {
       override def fromOption[Out](

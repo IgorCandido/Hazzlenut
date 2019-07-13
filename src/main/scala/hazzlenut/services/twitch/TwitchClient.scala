@@ -22,8 +22,6 @@ import hazzlenut.services.twitch.model.{TwitchReply, User}
 import hazzlenut.util.{HttpClient, UnmarshallerEntiy}
 import scalaz.zio.ZIO
 
-// TODO Move the logic into the type class (polymorphic)
-
 trait TwitchClient[F[_]] {
 
   def handleUnAuthorized(
@@ -74,9 +72,10 @@ trait TwitchClient[F[_]] {
       httpResult <- httpClient.request(
         HttpRequest(uri = url)
           .addCredentials(OAuth2BearerToken(accessToken.accessToken))
-      )
+      ) //TODO Create error ConnectionError(throwable) Inside of HttpClient Trait Class like unmarshaller
+      handledReply <- handleUnAuthorized(httpResult)
       outMaybe <- unmarshallerEntiy
-        .unmarshal[ResponseEntity, TwitchReply[Out]](httpResult.entity)
+        .unmarshal[ResponseEntity, TwitchReply[Out]](handledReply.entity)
       out <- fromOption[Seq[Out]](
         Option(outMaybe.data.toSeq).filter(_.nonEmpty),
         hazzlenutError
