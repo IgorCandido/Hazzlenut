@@ -293,7 +293,7 @@ trait TestIOUnmarshall {
 
 trait TestIOTwitchClient {
   def createTwitchClient(
-    userReturn: TestIO[User] = TestIO(Either.right(UserGen.getSample())),
+    userReturn: => TestIO[User] = TestIO(Either.right(UserGen.getSample())),
     followersReturn: TestIO[Seq[User]] = TestIO(Either.right(Seq(UserGen.getSample())))
   ) =
     new TwitchClient[TestIO] {

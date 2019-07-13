@@ -1,7 +1,6 @@
 Work list:
 
 - Look into getting a token expired error from twitch and asking for renew of token
-    - Understand how error on token expired would be bubbled up (Half implemented)
     - Test what happens with a 4xx and 5xx on the TwitchClient getting the HttpResponse
 - Implement twitch get followers (for now polling)
     - Implemented with actor
