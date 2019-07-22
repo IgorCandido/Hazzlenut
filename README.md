@@ -4,6 +4,15 @@ Work list:
     - Test what happens with a 4xx and 5xx on the TwitchClient getting the HttpResponse
         - Handle HttpConnectionError with ConnectionError(throwable), 
             create the Hazzlenut error for and handle it with the monadError
+            create unmarshaller for this type: {
+                                                 "message":"Invalid Token",
+                                                 "status":401,
+                                                 "error":"Unauthorized"
+                                               }
+            use above unmarshaller to get the error message and return it as a string
+            add this to the httpClient call (maybe making implicit with the twitchError type binding on the request and
+            into the implicit)
+
 - Implement twitch get followers (for now polling)
     - Implemented with actor
     - Asks UserInfo

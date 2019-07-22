@@ -20,6 +20,10 @@ object HazzlenutError{
   final case object UnableToAuthenticate extends HazzlenutError
 
   final case class UnmarshallError(throwable: Throwable) extends HazzlenutError
+
+  final case class HttpError(statusCode: Int, message: String) extends HazzlenutError
+
+  final case class ConnectionError(throwable: Throwable) extends HazzlenutError
 }
 
 
