@@ -14,6 +14,7 @@ import cats.implicits._
 import cats.{Monad, MonadError}
 import hazzlenut.errors.HazzlenutError
 import hazzlenut.errors.HazzlenutError.{
+  HttpError,
   UnableToAuthenticate,
   UnableToFetchFollowers,
   UnableToFetchUserInformation
@@ -30,18 +31,14 @@ trait TwitchClient[F[_]] {
     monadErrorHazzlenut: MonadError[F, HazzlenutError],
     materializer: Materializer
   ): (HttpResponse) => F[String] = { response =>
-    unmarshallerEntiy.unmarshal(response.entity)
+    unmarshallerEntiy.unmarshal(response.entity) //TODO something like this unmarshal[ResponseEntity, TwitchReply[Out]] with twitch error type
   }
 
-  def handleUnAuthorized(
-    reply: HttpResponse
-  )(implicit monadError: MonadError[F, HazzlenutError]): F[HttpResponse] = {
-    reply.status match {
-      case StatusCodes.Unauthorized =>
-        monadError.raiseError(UnableToAuthenticate)
-      case _ => monadError.pure(reply)
-    }
-
+  def handleUnAuthorized[Out](
+    implicit monadError: MonadError[F, HazzlenutError]
+  ): PartialFunction[HazzlenutError, F[Seq[Out]]] = {
+    case HttpError(StatusCodes.Unauthorized.intValue, _) =>
+      monadError.raiseError(UnableToAuthenticate)
   }
 
   def fromOption[Out](optionOf: Option[Out], hazzlenutError: HazzlenutError)(
@@ -77,20 +74,19 @@ trait TwitchClient[F[_]] {
     unmarshaller: Unmarshaller[ResponseEntity, TwitchReply[Out]],
     monadF: Monad[F],
     monadErrorThrowable: MonadError[F, HazzlenutError]): F[Seq[Out]] = {
-    for {
+    (for {
       httpResult <- httpClient.request(
         HttpRequest(uri = url)
           .addCredentials(OAuth2BearerToken(accessToken.accessToken)),
         extractErrorfromTwitchError
-      ) //TODO Create error ConnectionError(throwable) Inside of HttpClient Trait Class like unmarshaller
-      handledReply <- handleUnAuthorized(httpResult)
+      )
       outMaybe <- unmarshallerEntiy
-        .unmarshal[ResponseEntity, TwitchReply[Out]](handledReply.entity)
+        .unmarshal[ResponseEntity, TwitchReply[Out]](httpResult.entity)
       out <- fromOption[Seq[Out]](
         Option(outMaybe.data.toSeq).filter(_.nonEmpty),
         hazzlenutError
       )
-    } yield out
+    } yield out).recoverWith {handleUnAuthorized}
   }
 
   def user(accessToken: AccessToken)(

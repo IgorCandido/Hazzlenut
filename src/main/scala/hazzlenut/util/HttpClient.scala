@@ -36,7 +36,8 @@ trait HttpClient[F[_]] {
     monadError.handleErrorWith(f) { error =>
       error match {
         case ThrowableError(throwable) => monadError.raiseError(ConnectionError(throwable))
-        case err => monadError.raiseError(ConnectionError(err)) //TODO check if it makes sense to return an hazzlenut error without treating it
+        case err : HttpError => monadError.raiseError(err)
+        case err => monadError.raiseError(ConnectionError(err))
       }
     }
   }

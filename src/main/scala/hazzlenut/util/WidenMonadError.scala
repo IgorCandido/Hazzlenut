@@ -3,7 +3,7 @@ package hazzlenut.util
 
 import cats.instances.all._
 import cats.syntax.all._
-import cats.MonadError
+import cats.{Contravariant, MonadError}
 import hazzlenut.errors.HazzlenutError
 import hazzlenut.errors.HazzlenutError.ThrowableError
 import scalaz.zio.ZIO
@@ -23,9 +23,7 @@ object WidenMonadError {
       override def handleErrorWith[A](fa: ZIO[Any, HazzlenutError, A])
                                      (f: Throwable => ZIO[Any, HazzlenutError, A])
                                       : ZIO[Any, HazzlenutError, A] = {
-        val ff : HazzlenutError => ZIO[Any, HazzlenutError, A] = (e: HazzlenutError) => f(e)
-        monadError.handleErrorWith(fa)(ff)
-
+        monadError.handleErrorWith(fa)(f)
       }
 
       override def pure[A](x: A): ZIO[Any, HazzlenutError, A] = monadError.pure(x)

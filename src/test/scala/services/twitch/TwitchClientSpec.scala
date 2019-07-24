@@ -7,14 +7,13 @@ import cats.MonadError
 import cats.effect.IO
 import cats.implicits._
 import hazzlenut.errors.HazzlenutError
-import hazzlenut.errors.HazzlenutError.{ThrowableError, UnableToAuthenticate, UnableToFetchUserInformation, UnmarshallError}
+import hazzlenut.errors.HazzlenutError.{ConnectionError, HttpError, ThrowableError, UnableToAuthenticate, UnableToFetchUserInformation, UnmarshallError}
 import hazzlenut.services.twitch.AccessToken
 import hazzlenut.services.twitch.model.{TwitchReply, User}
 import hazzlenut.util.{HttpClient, UnmarshallerEntiy}
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpec}
 import utils.TestIO
 import scalaz.zio.ZIO
-
 
 import scala.concurrent.ExecutionContext
 
@@ -72,7 +71,7 @@ class TwitchClientSpec extends WordSpec with Matchers with BeforeAndAfterAll {
       userOrError.fold(
         error =>
           error match {
-            case ThrowableError(t) => t should ===(throwable)
+            case ConnectionError(t) => t should ===(throwable)
             case _                 => fail("Unknown error")
         },
         _ => fail("Should have failed")
@@ -116,7 +115,7 @@ class TwitchClientSpec extends WordSpec with Matchers with BeforeAndAfterAll {
       userOrError.fold(
         error =>
           error match {
-            case UnmarshallError(_) => succeed
+            case HttpError(_,_) => succeed
             case _                    => fail("Unknown error")
         },
         _ => fail("Should have failed")

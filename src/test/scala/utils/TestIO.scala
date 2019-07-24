@@ -216,7 +216,7 @@ trait TestIOHttpClient {
     testIO: TestIO[HttpResponse]
   )(implicit actorSystem: ActorSystem) =
     new HttpClient[TestIO] {
-      override def request(httpRequest: HttpRequest): TestIO[HttpResponse] = {
+      override def httpRequest(httpRequest: HttpRequest): TestIO[HttpResponse] = {
         testIO
       }
 
@@ -242,7 +242,7 @@ trait TestIOHttpClient {
 
   implicit def httpClient(testIO: TestIO[HttpResponse]) =
     new HttpClient[TestIO] {
-      override def request(httpRequest: HttpRequest): TestIO[HttpResponse] =
+      override def httpRequest(httpRequest: HttpRequest): TestIO[HttpResponse] =
         testIO
 
     }
