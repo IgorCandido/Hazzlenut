@@ -18,11 +18,20 @@ import hazzlenut.errors.HazzlenutError.{
   UnableToFetchFollowers,
   UnableToFetchUserInformation
 }
-import hazzlenut.services.twitch.model.{TwitchReply, User}
+import hazzlenut.services.twitch.model.{TwitchError, TwitchReply, User}
 import hazzlenut.util.{HttpClient, UnmarshallerEntiy}
 import scalaz.zio.ZIO
 
 trait TwitchClient[F[_]] {
+
+  def extractErrorfromTwitchError(
+    implicit unmarshallerEntiy: UnmarshallerEntiy[F],
+    unmarshaller: Unmarshaller[ResponseEntity, TwitchError],
+    monadErrorHazzlenut: MonadError[F, HazzlenutError],
+    materializer: Materializer
+  ): (HttpResponse) => F[String] = { response =>
+    unmarshallerEntiy.unmarshal(response.entity)
+  }
 
   def handleUnAuthorized(
     reply: HttpResponse
@@ -49,7 +58,7 @@ trait TwitchClient[F[_]] {
     unmarshallerEntiy: UnmarshallerEntiy[F],
     unmarshaller: Unmarshaller[ResponseEntity, TwitchReply[Out]],
     monadF: Monad[F],
-    monadError: MonadError[F, HazzlenutError]): F[Out] = {
+    monadErrorThrowable: MonadError[F, HazzlenutError]): F[Out] = {
     for {
       httpResult <- doRequestSeq[Out](url, accessToken, hazzlenutError)
       outMaybe = httpResult.headOption
@@ -67,11 +76,12 @@ trait TwitchClient[F[_]] {
     unmarshallerEntiy: UnmarshallerEntiy[F],
     unmarshaller: Unmarshaller[ResponseEntity, TwitchReply[Out]],
     monadF: Monad[F],
-    monadError: MonadError[F, HazzlenutError]): F[Seq[Out]] = {
+    monadErrorThrowable: MonadError[F, HazzlenutError]): F[Seq[Out]] = {
     for {
       httpResult <- httpClient.request(
         HttpRequest(uri = url)
-          .addCredentials(OAuth2BearerToken(accessToken.accessToken))
+          .addCredentials(OAuth2BearerToken(accessToken.accessToken)),
+        extractErrorfromTwitchError
       ) //TODO Create error ConnectionError(throwable) Inside of HttpClient Trait Class like unmarshaller
       handledReply <- handleUnAuthorized(httpResult)
       outMaybe <- unmarshallerEntiy
@@ -89,7 +99,7 @@ trait TwitchClient[F[_]] {
     httpClient: HttpClient[F],
     unmarshallerEntiy: UnmarshallerEntiy[F],
     monadF: Monad[F],
-    monadError: MonadError[F, HazzlenutError]
+    monadErrorThrowable: MonadError[F, HazzlenutError]
   ): F[User]
 
   def followers(accessToken: AccessToken, userId: String)(
@@ -98,7 +108,7 @@ trait TwitchClient[F[_]] {
     httpClient: HttpClient[F],
     unmarshallerEntiy: UnmarshallerEntiy[F],
     monadF: Monad[F],
-    monadError: MonadError[F, HazzlenutError]
+    monadErrorThrowable: MonadError[F, HazzlenutError]
   ): F[Seq[User]]
 }
 
@@ -125,7 +135,8 @@ object TwitchClient {
         httpClient: HttpClient[ZIO[Any, HazzlenutError, ?]],
         unmarshallerEntiy: UnmarshallerEntiy[ZIO[Any, HazzlenutError, ?]],
         monadF: Monad[ZIO[Any, HazzlenutError, ?]],
-        monadError: MonadError[ZIO[Any, HazzlenutError, ?], HazzlenutError]
+        monadErrorThrowable: MonadError[ZIO[Any, HazzlenutError, ?],
+                                        HazzlenutError]
       ): ZIO[Any, HazzlenutError, User] =
         for {
           user <- doRequest[User](
@@ -141,7 +152,8 @@ object TwitchClient {
         httpClient: HttpClient[ZIO[Any, HazzlenutError, ?]],
         unmarshallerEntiy: UnmarshallerEntiy[ZIO[Any, HazzlenutError, ?]],
         monadF: Monad[ZIO[Any, HazzlenutError, ?]],
-        monadError: MonadError[ZIO[Any, HazzlenutError, ?], HazzlenutError]
+        monadErrorThrowable: MonadError[ZIO[Any, HazzlenutError, ?],
+                                        HazzlenutError]
       ): ZIO[Any, HazzlenutError, Seq[User]] =
         for {
           users <- doRequestSeq[User](

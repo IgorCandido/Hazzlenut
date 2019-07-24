@@ -2,7 +2,7 @@ package hazzlenut.util
 
 import akka.http.scaladsl.unmarshalling.{Unmarshal, Unmarshaller}
 import akka.stream.Materializer
-import cats.{Monad, MonadError}
+import cats.MonadError
 import hazzlenut.errors.HazzlenutError
 import hazzlenut.errors.HazzlenutError.{ThrowableError, UnmarshallError}
 import scalaz.zio.{IO, ZIO}

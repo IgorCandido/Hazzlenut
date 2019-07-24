@@ -8,6 +8,7 @@ import hazzlenut.services.twitch.model.User
 import hazzlenut.util.HttpClient
 import scalaz.zio.ZIO
 import scalaz.zio.interop.catz._
+import cats.implicits._
 
 import scala.concurrent.Future
 

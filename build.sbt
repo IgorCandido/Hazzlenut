@@ -19,7 +19,7 @@ val `akka-http-spray-json` = "com.typesafe.akka" %% "akka-http-spray-json" % "10
 val akkaTestKit = "com.typesafe.akka" %% "akka-testkit" % "2.5.23" % Test
 val catseffect = "org.typelevel" %% "cats-effect" % "1.2.0"
 val cats = "org.typelevel" %% "cats-core" % "0.9.0"
-val dakatsukaOauth = "com.github.dakatsuka" %% "akka-http-oauth2-client" % "0.1.0"
+val dakatsukaOauth = "com.github.dakatsuka" %% "akka-http-oauth2-client" % "0.1.0" //TODO check if can upgrade to cats 1.6.1 without this breaking
 
 val circeVersion = "0.10.0"
 val circeParse = "io.circe" %% "circe-parser" % circeVersion

@@ -9,6 +9,7 @@ import hazzlenut.errors.HazzlenutError
 import hazzlenut.services.twitch.TokenGuardian.ApplicationStarted
 import hazzlenut.services.twitch.TokenGuardian
 import scalaz.zio.ZIO
+import cats.implicits._
 
 object Main extends App {
   implicit val system = ActorSystem()
