@@ -14,7 +14,7 @@ trait WidenMonadError[F[_], E, E2] {
 
 //TODO finish implementing the widen from MonadError of HazzlenutError to MonadError of Throwable
 object WidenMonadError {
-  implicit def widenHazzlenutErrorToThrowable = new WidenMonadError[ZIO[Any, HazzlenutError, ?], HazzlenutError, Throwable] {
+  implicit val widenHazzlenutErrorToThrowable = new WidenMonadError[ZIO[Any, HazzlenutError, ?], HazzlenutError, Throwable] {
     override def widen(implicit monadError: MonadError[ZIO[Any, HazzlenutError, ?], HazzlenutError], ev: HazzlenutError <:< Throwable): MonadError[ZIO[Any, HazzlenutError, ?], Throwable] = new MonadError[ZIO[Any, HazzlenutError, ?], Throwable] {
 
 
