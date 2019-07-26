@@ -31,7 +31,7 @@ trait TwitchClient[F[_]] {
     monadErrorHazzlenut: MonadError[F, HazzlenutError],
     materializer: Materializer
   ): (HttpResponse) => F[String] = { response =>
-    unmarshallerEntiy.unmarshal(response.entity) //TODO something like this unmarshal[ResponseEntity, TwitchReply[Out]] with twitch error type
+    unmarshallerEntiy.unmarshal[ResponseEntity, TwitchError](response.entity).map(_.message)
   }
 
   def handleUnAuthorized[Out](

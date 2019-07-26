@@ -80,7 +80,7 @@ class TwitchClientSpec extends WordSpec with Matchers with BeforeAndAfterAll {
     "get user with unAuthorized" in {
 
       implicit val httpClient = TestIO.httpClientWithCustomStatusCode(
-        "UnAuthorized",
+        "{\"message\":\"Invalid Token\",\"status\":401,\"error\":\"Unauthorized\"}",
         StatusCodes.Unauthorized
       )
 
@@ -115,7 +115,7 @@ class TwitchClientSpec extends WordSpec with Matchers with BeforeAndAfterAll {
       userOrError.fold(
         error =>
           error match {
-            case HttpError(_,_) => succeed
+            case HttpError(_,message) => message should ===("Must provide either from_id or to_id")
             case _                    => fail("Unknown error")
         },
         _ => fail("Should have failed")
