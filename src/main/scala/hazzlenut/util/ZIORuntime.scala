@@ -1,6 +1,6 @@
 package hazzlenut.util
 
-import scalaz.zio.DefaultRuntime
+import zio.DefaultRuntime
 
 object ZIORuntime {
   lazy val runtime = new DefaultRuntime {}

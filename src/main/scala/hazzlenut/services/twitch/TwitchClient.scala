@@ -21,7 +21,7 @@ import hazzlenut.errors.HazzlenutError.{
 }
 import hazzlenut.services.twitch.model.{TwitchError, TwitchReply, User}
 import hazzlenut.util.{HttpClient, UnmarshallerEntiy}
-import scalaz.zio.ZIO
+import zio.ZIO
 
 trait TwitchClient[F[_]] {
 

@@ -2,7 +2,7 @@ package hazzlenut.services.twitch
 
 import hazzlenut.errors.HazzlenutError
 import hazzlenut.errors.HazzlenutError.ThrowableError
-import scalaz.zio.ZIO
+import zio.ZIO
 
 import scala.util.Try
 

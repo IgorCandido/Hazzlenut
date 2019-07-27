@@ -5,7 +5,7 @@ import akka.stream.Materializer
 import cats.MonadError
 import hazzlenut.errors.HazzlenutError
 import hazzlenut.errors.HazzlenutError.{ThrowableError, UnmarshallError}
-import scalaz.zio.{IO, ZIO}
+import zio.{IO, ZIO}
 
 import scala.concurrent.Future
 

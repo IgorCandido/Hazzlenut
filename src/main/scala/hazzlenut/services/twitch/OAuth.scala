@@ -9,7 +9,7 @@ import com.github.dakatsuka.akka.http.oauth2.client.{Client, GrantType, Config =
 import hazzlenut.errors.HazzlenutError
 import hazzlenut.errors.HazzlenutError.ThrowableError
 import hazzlenut.services.twitch.Configuration.Config
-import scalaz.zio.ZIO
+import zio.ZIO
 
 import scala.concurrent.ExecutionContext
 

@@ -1,5 +1,9 @@
 Work list:
 
+- Implement logging
+    - Using log-effect
+        - Right now can only get a LogWriter as a IO[Nothing, LogWriter] seems that the way to go is have 
+            ZIO[Logger, Throwable, Unit] but this is not great cause first breaks LogWrite abstraction, second binds me to ZIO
 - Implement twitch get followers (for now polling)
     - Implemented with actor
     - Asks UserInfo

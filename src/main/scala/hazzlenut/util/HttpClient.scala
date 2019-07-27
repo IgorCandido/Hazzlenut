@@ -11,7 +11,7 @@ import hazzlenut.errors.HazzlenutError.{
   HttpError,
   ThrowableError
 }
-import scalaz.zio.{IO, ZIO}
+import zio.{IO, ZIO}
 
 import scala.concurrent.Future
 

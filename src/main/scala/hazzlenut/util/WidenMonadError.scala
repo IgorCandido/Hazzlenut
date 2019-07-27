@@ -6,7 +6,7 @@ import cats.syntax.all._
 import cats.{Contravariant, MonadError}
 import hazzlenut.errors.HazzlenutError
 import hazzlenut.errors.HazzlenutError.ThrowableError
-import scalaz.zio.ZIO
+import zio.ZIO
 
 trait WidenMonadError[F[_], E, E2] {
   def widen(implicit monadError: MonadError[F, E], ev: E <:< E2): MonadError[F, E2]

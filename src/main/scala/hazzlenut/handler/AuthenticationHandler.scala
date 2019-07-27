@@ -4,8 +4,8 @@ import akka.actor.ActorSystem
 import akka.stream.Materializer
 import hazzlenut.errors.HazzlenutError
 import hazzlenut.services.twitch.{AccessToken, Authenticate}
-import scalaz.zio.ZIO
-import scalaz.zio.interop.catz._
+import zio.ZIO
+import zio.interop.catz._
 
 import scala.concurrent.{ExecutionContext, Future}
 

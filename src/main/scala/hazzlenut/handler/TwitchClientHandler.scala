@@ -6,8 +6,8 @@ import hazzlenut.errors.HazzlenutError
 import hazzlenut.services.twitch.{AccessToken, TwitchClient}
 import hazzlenut.services.twitch.model.User
 import hazzlenut.util.HttpClient
-import scalaz.zio.ZIO
-import scalaz.zio.interop.catz._
+import zio.ZIO
+import zio.interop.catz._
 import cats.implicits._
 
 import scala.concurrent.Future

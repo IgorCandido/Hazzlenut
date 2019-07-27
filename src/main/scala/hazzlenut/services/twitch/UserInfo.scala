@@ -10,9 +10,13 @@ import hazzlenut.services.twitch.TokenHolder.{AskAccessToken, ReplyAccessToken, 
 import hazzlenut.services.twitch.UserInfo.{ProvideUser, RetrieveUser}
 import hazzlenut.services.twitch.model.User
 import hazzlenut.util.HttpClient
+import log.effect.LogLevels.Debug
+import log.effect.LogWriter
+import cats.implicits._
+import hazzlenut.util.ShowUtils._
 
 object UserInfo {
-  def props[F[_]: TwitchClientHandler: TwitchClient: HttpClient](
+  def props[F[_]: TwitchClientHandler: TwitchClient: HttpClient: LogWriter](
     tokenHolder: ActorRef
   ): Props = Props(new UserInfo(tokenHolder))
 
@@ -24,7 +28,7 @@ object UserInfo {
 // Created as soon as the Token is retrieved for a TokenHolder
 class UserInfo[F[_]: TwitchClientHandler: TwitchClient: HttpClient](
   tokenHolder: ActorRef
-) extends Actor {
+)(implicit log: LogWriter[F]) extends Actor {
   implicit val system = context.system
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher
@@ -51,6 +55,7 @@ class UserInfo[F[_]: TwitchClientHandler: TwitchClient: HttpClient](
       fetchUser(askToken = false)
       tokenHolder ! TokenExpiredNeedNew
     case Status.Failure(error) =>
+      log.write(Debug, show"Failure on call to get User with error $error")
     // 1 - Retry
     // 2 - Close app
   }

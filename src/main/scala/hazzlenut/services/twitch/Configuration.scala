@@ -6,7 +6,7 @@ import hazzlenut.errors.HazzlenutError
 import hazzlenut.errors.HazzlenutError.{InvalidConfiguration, MonadErrorHazzlenut}
 import hazzlenut.services.twitch.Configuration.Config
 import hazzlenut.util.MapGetterValidation.{ConfigurationValidation, _}
-import scalaz.zio.ZIO
+import zio.ZIO
 
 trait Configuration[F[_]] {
   import hazzlenut.util.MapGetterValidation._
