@@ -4,7 +4,7 @@ import akka.actor.{Actor, ActorContext, ActorRef, PoisonPill, Props}
 import hazzlenut.errors.HazzlenutError
 import hazzlenut.handler.{AuthenticationHandler, TwitchClientHandler}
 import hazzlenut.services.twitch.TokenGuardian.{ApplicationStarted, Authenticated, CantRenewToken}
-import hazzlenut.util.HttpClient
+import hazzlenut.util.{HttpClient, LogProvider}
 import log.effect.LogWriter
 
 object TokenGuardian {
@@ -12,14 +12,14 @@ object TokenGuardian {
   case class Authenticated(accessToken: AccessToken)
   case object ApplicationStarted
 
-  def props[F[_]: UserInfoInitializer: TwitchClientHandler: TwitchClient: HttpClient: LogWriter](
+  def props[F[_]: UserInfoInitializer: TwitchClientHandler: TwitchClient: HttpClient: LogProvider](
     implicit authenticationHandler: AuthenticationHandler,
     tokenHolderInitializer: TokenHolderInitializer
   ) =
     Props(new TokenGuardian())
 }
 
-class TokenGuardian[F[_]: TwitchClientHandler: TwitchClient: HttpClient: LogWriter](
+class TokenGuardian[F[_]: TwitchClientHandler: TwitchClient: HttpClient: LogProvider](
   implicit authenticationHandler: AuthenticationHandler,
   tokenHolderInitializer: TokenHolderInitializer,
   userInfoInitializer: UserInfoInitializer[F]

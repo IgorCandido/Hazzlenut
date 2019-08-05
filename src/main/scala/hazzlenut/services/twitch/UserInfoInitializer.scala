@@ -3,7 +3,7 @@ package hazzlenut.services.twitch
 import akka.actor.{ActorContext, ActorRef}
 import hazzlenut.errors.HazzlenutError
 import hazzlenut.handler.TwitchClientHandler
-import hazzlenut.util.HttpClient
+import hazzlenut.util.{HttpClient, LogProvider}
 import log.effect.LogWriter
 import zio.ZIO
 
@@ -15,7 +15,7 @@ object UserInfoInitializer {
         twitchClientHandler: TwitchClientHandler[ZIO[Any, HazzlenutError, ?]],
         twitchClient: TwitchClient[ZIO[Any, HazzlenutError, ?]],
         httpClient: HttpClient[ZIO[Any, HazzlenutError, ?]],
-        loggerWriter: LogWriter[ZIO[Any, HazzlenutError, ?]]
+        logProvider: LogProvider[ZIO[Any, Throwable, ?]]
       ): ActorRef = {
         context.actorOf(
           UserInfo.props[ZIO[Any, HazzlenutError, ?]](tokenHolder)
@@ -30,6 +30,6 @@ trait UserInfoInitializer[F[_]] {
     twitchClientHandler: TwitchClientHandler[F],
     twitchClient: TwitchClient[F],
     httpClient: HttpClient[F],
-    logWriter: LogWriter[F]
+    logProvider: LogProvider[F]
   ): ActorRef
 }

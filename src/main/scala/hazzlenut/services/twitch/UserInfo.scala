@@ -9,14 +9,14 @@ import hazzlenut.handler.TwitchClientHandler.dsl._
 import hazzlenut.services.twitch.TokenHolder.{AskAccessToken, ReplyAccessToken, TokenExpiredNeedNew}
 import hazzlenut.services.twitch.UserInfo.{ProvideUser, RetrieveUser}
 import hazzlenut.services.twitch.model.User
-import hazzlenut.util.HttpClient
+import hazzlenut.util.{HttpClient, LogProvider}
 import log.effect.LogLevels.Debug
 import log.effect.LogWriter
 import cats.implicits._
 import hazzlenut.util.ShowUtils._
 
 object UserInfo {
-  def props[F[_]: TwitchClientHandler: TwitchClient: HttpClient: LogWriter](
+  def props[F[_]: TwitchClientHandler: TwitchClient: HttpClient: LogProvider](
     tokenHolder: ActorRef
   ): Props = Props(new UserInfo(tokenHolder))
 
@@ -28,7 +28,7 @@ object UserInfo {
 // Created as soon as the Token is retrieved for a TokenHolder
 class UserInfo[F[_]: TwitchClientHandler: TwitchClient: HttpClient](
   tokenHolder: ActorRef
-)(implicit log: LogWriter[F]) extends Actor {
+)(implicit log: LogProvider[F]) extends Actor {
   implicit val system = context.system
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher

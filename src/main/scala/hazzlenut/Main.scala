@@ -10,13 +10,11 @@ import hazzlenut.services.twitch.TokenGuardian.ApplicationStarted
 import hazzlenut.services.twitch.TokenGuardian
 import zio.ZIO
 import cats.implicits._
-import hazzlenut.util.Logging
 
 object Main extends App {
   implicit val system = ActorSystem()
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher
-  implicit val logger = Logging.log4ZIO("Hazzlenut")
 
   // TODO Think about using this actor system, same for akka http
   // and about import the twitch ZIO here.
