@@ -5,11 +5,9 @@ import akka.stream.ActorMaterializer
 import hazzlenut.akkaServer.Server
 import hazzlenut.akkaServer.Server.Configuration
 import hazzlenut.api.Authentication
-import hazzlenut.errors.HazzlenutError
-import hazzlenut.services.twitch.TokenGuardian.ApplicationStarted
 import hazzlenut.services.twitch.TokenGuardian
-import zio.ZIO
-import cats.implicits._
+import hazzlenut.services.twitch.TokenGuardian.ApplicationStarted
+import zio.interop.catz._
 
 object Main extends App {
   implicit val system = ActorSystem()
@@ -19,7 +17,7 @@ object Main extends App {
   // TODO Think about using this actor system, same for akka http
   // and about import the twitch ZIO here.
 
-  implicit val tokenGuardian = system.actorOf(TokenGuardian.props[ZIO[Any, HazzlenutError, ?]])
+  implicit val tokenGuardian = system.actorOf(TokenGuardian.props[HazzleNutZIO])
 
   val runConfiguration = Configuration(
     interface = "0.0.0.0",

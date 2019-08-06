@@ -11,8 +11,11 @@ import hazzlenut.handler.{AuthenticationHandler, TwitchClientHandler}
 import hazzlenut.services.twitch.model.User
 import hazzlenut.services.twitch.{AccessToken, Configuration, OAuth, TwitchClient, UserInfo, UserInfoInitializer}
 import hazzlenut.util.MapGetterValidation.ConfigurationValidation
-import hazzlenut.util.{HttpClient, UnmarshallerEntiy}
+import hazzlenut.util.{HttpClient, LogProvider, UnmarshallerEntiy}
+import log.effect.{LogWriter, LogWriterConstructor, internal}
+import log.effect.internal.EffectSuspension
 import utils.TestIO.httpClientTestIO
+import org.{log4s => l4s}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
@@ -216,7 +219,9 @@ trait TestIOHttpClient {
     testIO: TestIO[HttpResponse]
   )(implicit actorSystem: ActorSystem) =
     new HttpClient[TestIO] {
-      override def httpRequest(httpRequest: HttpRequest): TestIO[HttpResponse] = {
+      override def httpRequest(
+        httpRequest: HttpRequest
+      ): TestIO[HttpResponse] = {
         testIO
       }
 
@@ -371,6 +376,46 @@ trait TestIOTwitchClient {
     }
 }
 
+trait TestIOLoggerProvider {
+  import instances._
+  object instances {
+    implicit final val taskEffectSuspension
+    : EffectSuspension[TestIO] =
+      new EffectSuspension[TestIO] {
+        def suspend[A](a: => A): TestIO[A] =
+          TestIO(Either.right(a))
+      }
+
+
+    implicit final def functorInstances: internal.Functor[TestIO] =
+      new internal.Functor[TestIO] {
+        def fmap[A, B](f: A => B): TestIO[A] => TestIO[B] = _ map f
+      }
+  }
+
+  def log4sFromName1(name: String)
+  : TestIO[LogWriter[TestIO]] =
+      LogWriter
+        .from[TestIO]
+        .runningEffect[TestIO](
+          TestIO(Either.right(l4s.getLogger(name)))
+        )(
+          LogWriterConstructor
+            .log4sConstructor[TestIO, TestIO](
+              functorInstances,
+              taskEffectSuspension
+            )
+        )
+
+  implicit object TestIOLogProvider
+    extends LogProvider[TestIO] {
+    override def getLoggerByName(
+                                  name: String
+                                ): TestIO[LogWriter[TestIO]] =
+      log4sFromName1(name)
+  }
+}
+
 trait TestIOUserInfoInitializer {
   type UserInfoInitializerType = (ActorContext,
                                   TwitchClientHandler[TestIO],
@@ -398,7 +443,9 @@ trait TestIOUserInfoInitializer {
         implicit context: ActorContext,
         twitchClientHandler: TwitchClientHandler[TestIO],
         twitchClient: TwitchClient[TestIO],
-        httpClient: HttpClient[TestIO]
+        httpClient: HttpClient[TestIO],
+        logProvider: LogProvider[TestIO],
+        monad: Monad[TestIO]
       ): ActorRef =
         actorRefGenerator(
           context,
@@ -416,4 +463,5 @@ object TestIO
     with TestIOHttpClient
     with TestIOUnmarshall
     with TestIOTwitchClient
-    with TestIOUserInfoInitializer {}
+    with TestIOUserInfoInitializer
+    with TestIOLoggerProvider {}

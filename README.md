@@ -5,6 +5,8 @@ Work list:
         Create a layer that transforms the F into a future (cause we are using lightbend products) 
         and allow us to then pipe
         the future to self to allows to continue on result of log (???). Maybe just flatMap on it...
+        Note( for comprehension seems to do the trick, need to add tests to make sure that the actor calls indeed the
+        function that we are yielding(fetchAccessToken))
 - Implement twitch get followers (for now polling)
     - Implemented with actor
     - Asks UserInfo

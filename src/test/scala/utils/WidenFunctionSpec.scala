@@ -4,9 +4,9 @@ import cats.MonadError
 import cats.implicits._
 import hazzlenut.errors.HazzlenutError
 import hazzlenut.errors.HazzlenutError.{ThrowableError, UnableToConnect}
-import org.scalatest.{AsyncWordSpec, Matchers, WordSpec}
-import scalaz.zio.{DefaultRuntime, ZIO}
-import scalaz.zio.interop.catz._
+import org.scalatest.{AsyncWordSpec, Matchers}
+import zio.interop.catz._
+import zio.{DefaultRuntime, ZIO}
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
@@ -29,7 +29,9 @@ class WidenFunctionSpec extends AsyncWordSpec with Matchers {
 
       val runtime = new DefaultRuntime {}
 
-      runtime.unsafeRunToFuture(adapted.fold(err => fail("Not Handled"), _ should ===("Test")))
+      runtime.unsafeRunToFuture(
+        adapted.fold(err => fail("Not Handled"), _ should ===("Test"))
+      )
     }
 
     "PartialFunction with contravariance Future" in {
@@ -60,9 +62,10 @@ class WidenFunctionSpec extends AsyncWordSpec with Matchers {
         case err => ThrowableError(err)
       }
 
-      val handler: Throwable => String =  err => err match {
-        case hazzlenutError: HazzlenutError => "HazzlenutError"
-        case err: Throwable => "Throwable"
+      val handler: Throwable => String = err =>
+        err match {
+          case hazzlenutError: HazzlenutError => "HazzlenutError"
+          case err: Throwable                 => "Throwable"
       }
 
       val monadError = implicitly[MonadError[Future, Throwable]]
@@ -75,7 +78,7 @@ class WidenFunctionSpec extends AsyncWordSpec with Matchers {
 
       adapted.transform { r =>
         r match {
-          case Success(value)     => Success(value should===("HazzlenutError"))
+          case Success(value)     => Success(value should ===("HazzlenutError"))
           case Failure(exception) => Failure(fail("Shouldn't have errored"))
         }
       }

@@ -1,25 +1,23 @@
 package hazzlenut.services.twitch
 
 import akka.actor.{ActorContext, ActorRef}
-import hazzlenut.errors.HazzlenutError
+import cats.Monad
+import hazzlenut.HazzleNutZIO
 import hazzlenut.handler.TwitchClientHandler
 import hazzlenut.util.{HttpClient, LogProvider}
-import log.effect.LogWriter
-import zio.ZIO
 
 object UserInfoInitializer {
   implicit val akkaUserInfoInitializer =
-    new UserInfoInitializer[ZIO[Any, HazzlenutError, ?]] {
+    new UserInfoInitializer[HazzleNutZIO] {
       override def initializeUserInfo(tokenHolder: ActorRef)(
         implicit context: ActorContext,
-        twitchClientHandler: TwitchClientHandler[ZIO[Any, HazzlenutError, ?]],
-        twitchClient: TwitchClient[ZIO[Any, HazzlenutError, ?]],
-        httpClient: HttpClient[ZIO[Any, HazzlenutError, ?]],
-        logProvider: LogProvider[ZIO[Any, Throwable, ?]]
+        twitchClientHandler: TwitchClientHandler[HazzleNutZIO],
+        twitchClient: TwitchClient[HazzleNutZIO],
+        httpClient: HttpClient[HazzleNutZIO],
+        logProvider: LogProvider[HazzleNutZIO],
+        monad: Monad[HazzleNutZIO]
       ): ActorRef = {
-        context.actorOf(
-          UserInfo.props[ZIO[Any, HazzlenutError, ?]](tokenHolder)
-        )
+        context.actorOf(UserInfo.props[HazzleNutZIO](tokenHolder))
       }
     }
 }
@@ -30,6 +28,7 @@ trait UserInfoInitializer[F[_]] {
     twitchClientHandler: TwitchClientHandler[F],
     twitchClient: TwitchClient[F],
     httpClient: HttpClient[F],
-    logProvider: LogProvider[F]
+    logProvider: LogProvider[F],
+    monad: Monad[F]
   ): ActorRef
 }

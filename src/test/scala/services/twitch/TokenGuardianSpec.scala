@@ -2,12 +2,13 @@ package services.twitch
 
 import akka.actor.{ActorContext, ActorRef, ActorSystem}
 import akka.testkit.{TestKit, TestProbe}
+import cats.Monad
 import cats.implicits._
 import hazzlenut.handler.{AuthenticationHandler, TwitchClientHandler}
 import hazzlenut.services.twitch.TokenGuardian.{ApplicationStarted, Authenticated}
 import hazzlenut.services.twitch.TokenHolder.AskAccessToken
 import hazzlenut.services.twitch._
-import hazzlenut.util.HttpClient
+import hazzlenut.util.{HttpClient, LogProvider}
 import org.scalatest.{AsyncWordSpecLike, Matchers}
 import utils.{AccessTokenGen, TestIO}
 
@@ -274,7 +275,9 @@ class TokenGuardianSpec
           implicit context: ActorContext,
           twitchClientHandler: TwitchClientHandler[TestIO],
           twitchClient: TwitchClient[TestIO],
-          httpClient: HttpClient[TestIO]
+          httpClient: HttpClient[TestIO],
+          logProvider: LogProvider[TestIO],
+          monad: Monad[TestIO]
         ): ActorRef = {
           numberUserInfoInitialized += 1
           userInfoProbe.ref
@@ -327,7 +330,9 @@ class TokenGuardianSpec
           implicit context: ActorContext,
           twitchClientHandler: TwitchClientHandler[TestIO],
           twitchClient: TwitchClient[TestIO],
-          httpClient: HttpClient[TestIO]
+          httpClient: HttpClient[TestIO],
+          logProvider: LogProvider[TestIO],
+          monad: Monad[TestIO]
         ): ActorRef = {
           numberUserInfoInitialized += 1
           userInfoProbe.ref

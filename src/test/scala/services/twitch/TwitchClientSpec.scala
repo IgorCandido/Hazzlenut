@@ -3,17 +3,14 @@ package services.twitch
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.{HttpResponse, StatusCodes}
 import akka.stream.{ActorMaterializer, Materializer}
-import cats.MonadError
-import cats.effect.IO
 import cats.implicits._
 import hazzlenut.errors.HazzlenutError
-import hazzlenut.errors.HazzlenutError.{ConnectionError, HttpError, ThrowableError, UnableToAuthenticate, UnableToFetchUserInformation, UnmarshallError}
+import hazzlenut.errors.HazzlenutError._
 import hazzlenut.services.twitch.AccessToken
 import hazzlenut.services.twitch.model.{TwitchReply, User}
 import hazzlenut.util.{HttpClient, UnmarshallerEntiy}
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpec}
 import utils.TestIO
-import scalaz.zio.ZIO
 
 import scala.concurrent.ExecutionContext
 
@@ -72,7 +69,7 @@ class TwitchClientSpec extends WordSpec with Matchers with BeforeAndAfterAll {
         error =>
           error match {
             case ConnectionError(t) => t should ===(throwable)
-            case _                 => fail("Unknown error")
+            case _                  => fail("Unknown error")
         },
         _ => fail("Should have failed")
       )
@@ -115,8 +112,9 @@ class TwitchClientSpec extends WordSpec with Matchers with BeforeAndAfterAll {
       userOrError.fold(
         error =>
           error match {
-            case HttpError(_,message) => message should ===("Must provide either from_id or to_id")
-            case _                    => fail("Unknown error")
+            case HttpError(_, message) =>
+              message should ===("Must provide either from_id or to_id")
+            case _ => fail("Unknown error")
         },
         _ => fail("Should have failed")
       )
@@ -142,7 +140,7 @@ class TwitchClientSpec extends WordSpec with Matchers with BeforeAndAfterAll {
         error =>
           error match {
             case UnmarshallError(t) => t should ===(throwable)
-            case _                 => fail("Unknown error")
+            case _                  => fail("Unknown error")
         },
         _ => fail("Should have failed")
       )
