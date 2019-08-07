@@ -2,23 +2,27 @@ package services.twitch
 
 import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestKit, TestProbe}
-import hazzlenut.services.twitch.TokenHolder.{AskAccessToken, ReplyAccessToken, TokenExpiredNeedNew}
-import hazzlenut.services.twitch.model.User
-import hazzlenut.services.twitch.{AccessToken, TwitchClient, UserInfo}
-import org.scalatest.{AsyncWordSpecLike, BeforeAndAfterAll, Matchers, WordSpecLike}
-import utils.{AccessTokenGen, TestIO, UserGen}
-import utils.TestIO._
+import cats.{Id, Monad}
 import cats.implicits._
-import hazzlenut.errors.HazzlenutError.UnableToAuthenticate
+import hazzlenut.errors.HazzlenutError.{UnableToAuthenticate, UnableToConnect}
+import hazzlenut.handler.TwitchClientHandler
+import hazzlenut.services.twitch.TokenHolder.{AskAccessToken, ReplyAccessToken, TokenExpiredNeedNew}
+import hazzlenut.services.twitch.{TwitchClient, UserInfo}
 import hazzlenut.services.twitch.UserInfo.{ProvideUser, RetrieveUser}
+import hazzlenut.services.twitch.model.User
+import hazzlenut.util.{HttpClient, LogProvider}
+import org.scalatest.{AsyncWordSpecLike, BeforeAndAfterAll, Matchers}
+import utils.TestIO._
+import utils.{AccessTokenGen, TestIO, UserGen}
 
-import concurrent.duration._
+import scala.concurrent.duration._
 
-class UserInfoSpec extends TestKit(ActorSystem("UserInfoSpec"))
-  with AsyncWordSpecLike
-  with ImplicitSender
-  with Matchers
-  with BeforeAndAfterAll {
+class UserInfoSpec
+    extends TestKit(ActorSystem("UserInfoSpec"))
+    with AsyncWordSpecLike
+    with ImplicitSender
+    with Matchers
+    with BeforeAndAfterAll {
 
   val dummyAccessToken = AccessTokenGen.sample()
 
@@ -37,7 +41,8 @@ class UserInfoSpec extends TestKit(ActorSystem("UserInfoSpec"))
 
       val user = UserGen.getSample()
 
-      implicit val twitchClient = TestIO.createTwitchClient(userReturn = TestIO[User](Either.right(user)))
+      implicit val twitchClient =
+        TestIO.createTwitchClient(userReturn = TestIO[User](Either.right(user)))
 
       val userInfo = system.actorOf(UserInfo.props(probe.ref))
 
@@ -57,7 +62,9 @@ class UserInfoSpec extends TestKit(ActorSystem("UserInfoSpec"))
 
       val user = UserGen.getSample()
 
-      implicit val twitchClient = TestIO.createTwitchClient(userReturn = TestIO[User](Either.left(UnableToAuthenticate)))
+      implicit val twitchClient = TestIO.createTwitchClient(
+        userReturn = TestIO[User](Either.left(UnableToAuthenticate))
+      )
 
       val userInfo = system.actorOf(UserInfo.props(probe.ref))
 
@@ -73,9 +80,14 @@ class UserInfoSpec extends TestKit(ActorSystem("UserInfoSpec"))
 
       val user = UserGen.getSample()
 
-      val it = Iterator(TestIO[User](Either.left(UnableToAuthenticate)), TestIO[User](Either.right(user)))
+      val it = Iterator(
+        TestIO[User](Either.left(UnableToAuthenticate)),
+        TestIO[User](Either.right(user))
+      )
 
-      implicit val twitchClient = TestIO.createTwitchClient(userReturn = { it.next })
+      implicit val twitchClient = TestIO.createTwitchClient(userReturn = {
+        it.next
+      })
 
       val userInfo = system.actorOf(UserInfo.props(probe.ref))
 
@@ -91,6 +103,38 @@ class UserInfoSpec extends TestKit(ActorSystem("UserInfoSpec"))
         probe.expectMsg(10 millis, ProvideUser(user))
         succeed
       }
+    }
+
+    "Log error when failing to get user" in {
+      val probe = TestProbe()
+
+      implicit val twitchClient = TestIO.createTwitchClient(
+        userReturn = TestIO[User](Either.left(UnableToConnect))
+      )
+      val applyOnLogging = new (~>[Id]) {
+        override def apply[A, B](a: Id[A], b: Id[B]): (A, B) =
+          (a, b)
+      }
+
+      implicit val providerLog: LogProvider[TestIO] =
+        createLogProvider(applyOnLogging)
+
+      val userInfo = system.actorOf(
+        UserInfo.props(probe.ref)(
+          implicitly[TwitchClientHandler[TestIO]],
+          implicitly[TwitchClient[TestIO]],
+          implicitly[HttpClient[TestIO]],
+          providerLog,
+          implicitly[Monad[TestIO]]
+        )
+      )
+
+      probe.expectMsg(AskAccessToken)
+
+      userInfo.tell(ReplyAccessToken(dummyAccessToken), probe.ref)
+      probe.expectMsg( AskAccessToken)
+
+      succeed
     }
   }
 

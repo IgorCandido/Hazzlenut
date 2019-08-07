@@ -1,19 +1,37 @@
 package utils
 import akka.actor.{ActorContext, ActorRef, ActorSystem}
-import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpRequest, HttpResponse, StatusCode, StatusCodes}
+import akka.http.scaladsl.model.{
+  ContentTypes,
+  HttpEntity,
+  HttpRequest,
+  HttpResponse,
+  StatusCode,
+  StatusCodes
+}
 import akka.http.scaladsl.unmarshalling.{Unmarshal, Unmarshaller}
 import akka.stream.Materializer
 import cats.implicits._
-import cats.{Monad, MonadError}
+import cats.{Id, Monad, MonadError}
 import hazzlenut.errors.HazzlenutError
-import hazzlenut.errors.HazzlenutError.{ThrowableError, UnableToConnect, UnableToFetchUserInformation}
+import hazzlenut.errors.HazzlenutError.{
+  ThrowableError,
+  UnableToConnect,
+  UnableToFetchUserInformation
+}
 import hazzlenut.handler.{AuthenticationHandler, TwitchClientHandler}
 import hazzlenut.services.twitch.model.User
-import hazzlenut.services.twitch.{AccessToken, Configuration, OAuth, TwitchClient, UserInfo, UserInfoInitializer}
+import hazzlenut.services.twitch.{
+  AccessToken,
+  Configuration,
+  OAuth,
+  TwitchClient,
+  UserInfo,
+  UserInfoInitializer
+}
 import hazzlenut.util.MapGetterValidation.ConfigurationValidation
 import hazzlenut.util.{HttpClient, LogProvider, UnmarshallerEntiy}
-import log.effect.{LogWriter, LogWriterConstructor, internal}
-import log.effect.internal.EffectSuspension
+import log.effect.{LogLevel, LogWriter, LogWriterConstructor, internal}
+import log.effect.internal.{EffectSuspension, Show}
 import utils.TestIO.httpClientTestIO
 import org.{log4s => l4s}
 
@@ -379,13 +397,11 @@ trait TestIOTwitchClient {
 trait TestIOLoggerProvider {
   import instances._
   object instances {
-    implicit final val taskEffectSuspension
-    : EffectSuspension[TestIO] =
+    implicit final val taskEffectSuspension: EffectSuspension[TestIO] =
       new EffectSuspension[TestIO] {
         def suspend[A](a: => A): TestIO[A] =
           TestIO(Either.right(a))
       }
-
 
     implicit final def functorInstances: internal.Functor[TestIO] =
       new internal.Functor[TestIO] {
@@ -393,25 +409,36 @@ trait TestIOLoggerProvider {
       }
   }
 
-  def log4sFromName1(name: String)
-  : TestIO[LogWriter[TestIO]] =
-      LogWriter
-        .from[TestIO]
-        .runningEffect[TestIO](
-          TestIO(Either.right(l4s.getLogger(name)))
-        )(
-          LogWriterConstructor
-            .log4sConstructor[TestIO, TestIO](
-              functorInstances,
-              taskEffectSuspension
-            )
-        )
+  def log4sFromName1(name: String): TestIO[LogWriter[TestIO]] =
+    LogWriter
+      .from[TestIO]
+      .runningEffect[TestIO](TestIO(Either.right(l4s.getLogger(name))))(
+        LogWriterConstructor
+          .log4sConstructor[TestIO, TestIO](
+            functorInstances,
+            taskEffectSuspension
+          )
+      )
 
-  implicit object TestIOLogProvider
-    extends LogProvider[TestIO] {
-    override def getLoggerByName(
-                                  name: String
-                                ): TestIO[LogWriter[TestIO]] =
+  trait ~>[F[_]] {
+    def apply[A, B](a: F[A], b: F[B]) : (A, B)
+  }
+
+  def createLogProvider(f: ~>[Id]): LogProvider[TestIO] = {
+    new LogProvider[TestIO] {
+      override def getLoggerByName(name: String): TestIO[LogWriter[TestIO]] = {
+        TestIO(Either.right(new LogWriter[TestIO] {
+          override def write[A, L <: LogLevel](level: L, a: => A)(
+            implicit evidence$1: Show[A],
+            evidence$2: Show[L]
+          ): TestIO[Unit] = TestIO(Either.right(f(a, level)))
+        }))
+      }
+    }
+  }
+
+  implicit val testIOLogger = new LogProvider[TestIO] {
+    override def getLoggerByName(name: String): TestIO[LogWriter[TestIO]] =
       log4sFromName1(name)
   }
 }

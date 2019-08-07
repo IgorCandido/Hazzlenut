@@ -58,7 +58,7 @@ class UserInfo[F[_]: TwitchClientHandler: TwitchClient: HttpClient: Monad](
     case Status.Failure(_: UnableToAuthenticate.type) => // What to do when failure on getting User
       // 3 - ReAuthenticate
       fetchAccessToken(expiredAccessToken = true)
-    case Status.Failure(error) =>
+    case Status.Failure(error) => {
       // 1 - Retry
       for {
         logger <- logprovider.getLoggerByName("UserInfo")
@@ -68,7 +68,8 @@ class UserInfo[F[_]: TwitchClientHandler: TwitchClient: HttpClient: Monad](
         )
       } yield
         fetchAccessToken() // Failed to Get User to get access token and try again
-    // 2 - Close app (Scenario not necessary for now)
+      // 2 - Close app (Scenario not necessary for now)
+    }
   }
 
   def fetchAccessToken(expiredAccessToken: Boolean = false) = {
