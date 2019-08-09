@@ -10,8 +10,6 @@ Work list:
         Layer on the user info that logs is not terminating so Akka considers that the message was not handled and initiates
         the actor again (UserInfo), have to maybe pipe to result to self and see if message is considered handled and 
         logging is done
-        Have to find a way to extract what is logged from the test, current problems, can't find a way to store the values 
-        and can't have any state in the class to have the same types as the method apply
 - Implement twitch get followers (for now polling)
     - Implemented with actor
     - Asks UserInfo

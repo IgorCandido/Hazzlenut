@@ -11,6 +11,8 @@ import hazzlenut.services.twitch.{TwitchClient, UserInfo}
 import hazzlenut.services.twitch.UserInfo.{ProvideUser, RetrieveUser}
 import hazzlenut.services.twitch.model.User
 import hazzlenut.util.{HttpClient, LogProvider}
+import log.effect.LogLevel
+import log.effect.LogLevels.Debug
 import org.scalatest.{AsyncWordSpecLike, BeforeAndAfterAll, Matchers}
 import utils.TestIO._
 import utils.{AccessTokenGen, TestIO, UserGen}
@@ -112,8 +114,12 @@ class UserInfoSpec
         userReturn = TestIO[User](Either.left(UnableToConnect))
       )
       val applyOnLogging = new (~>[Id]) {
-        override def apply[A, B](a: Id[A], b: Id[B]): (A, B) =
+        var written: (String, LogLevel) = ("", Debug)
+
+        override def apply[A, B](a: Id[A], b: Id[B])(implicit ev2: B <:< LogLevel): (A, B) = {
+          written = (a.asInstanceOf[Id[String]], b)
           (a, b)
+        }
       }
 
       implicit val providerLog: LogProvider[TestIO] =

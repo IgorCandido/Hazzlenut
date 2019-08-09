@@ -421,7 +421,7 @@ trait TestIOLoggerProvider {
       )
 
   trait ~>[F[_]] {
-    def apply[A, B](a: F[A], b: F[B]) : (A, B)
+    def apply[A, B](a: F[A], b: F[B])(implicit ev2: B <:< LogLevel) : (A, B)
   }
 
   def createLogProvider(f: ~>[Id]): LogProvider[TestIO] = {
