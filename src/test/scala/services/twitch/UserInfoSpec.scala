@@ -6,7 +6,11 @@ import cats.{Id, Monad}
 import cats.implicits._
 import hazzlenut.errors.HazzlenutError.{UnableToAuthenticate, UnableToConnect}
 import hazzlenut.handler.TwitchClientHandler
-import hazzlenut.services.twitch.TokenHolder.{AskAccessToken, ReplyAccessToken, TokenExpiredNeedNew}
+import hazzlenut.services.twitch.TokenHolder.{
+  AskAccessToken,
+  ReplyAccessToken,
+  TokenExpiredNeedNew
+}
 import hazzlenut.services.twitch.{TwitchClient, UserInfo}
 import hazzlenut.services.twitch.UserInfo.{ProvideUser, RetrieveUser}
 import hazzlenut.services.twitch.model.User
@@ -108,6 +112,29 @@ class UserInfoSpec
     }
 
     "Log error when failing to get user" in {
+      val expected =
+        """Failure on call to get User with error Throwable: message: Test, stackTrace: hazzlenut.errors.HazzlenutError$UnableToConnect$: Test
+	at hazzlenut.errors.HazzlenutError$UnableToConnect$.<clinit>(HazzlenutError.scala)
+	at services.twitch.UserInfoSpec.$anonfun$new$12(UserInfoSpec.scala:141)
+	at utils.TestIOTwitchClient$$anon$9.user(TestIO.scala:330)
+	at utils.TestIOTwitchClient$$anon$9.user(TestIO.scala:316)
+	at utils.TestIOTwitchClient$$anon$11.retrieveUser(TestIO.scala:390)
+	at hazzlenut.handler.TwitchClientHandler$dsl$.retrieveUser(TwitchClientHandler.scala:32)
+	at hazzlenut.services.twitch.UserInfo$$anonfun$waitingForToken$1.applyOrElse(UserInfo.scala:53)
+	at akka.actor.Actor.aroundReceive(Actor.scala:539)
+	at akka.actor.Actor.aroundReceive$(Actor.scala:537)
+	at hazzlenut.services.twitch.UserInfo.aroundReceive(UserInfo.scala:33)
+	at akka.actor.ActorCell.receiveMessage(ActorCell.scala:612)
+	at akka.actor.ActorCell.invoke(ActorCell.scala:581)
+	at akka.dispatch.Mailbox.processMailbox(Mailbox.scala:268)
+	at akka.dispatch.Mailbox.run(Mailbox.scala:229)
+	at akka.dispatch.Mailbox.exec(Mailbox.scala:241)
+	at akka.dispatch.forkjoin.ForkJoinTask.doExec(ForkJoinTask.java:260)
+	at akka.dispatch.forkjoin.ForkJoinPool$WorkQueue.runTask(ForkJoinPool.java:1339)
+	at akka.dispatch.forkjoin.ForkJoinPool.runWorker(ForkJoinPool.java:1979)
+	at akka.dispatch.forkjoin.ForkJoinWorkerThread.run(ForkJoinWorkerThread.java:107)
+"""
+
       val probe = TestProbe()
 
       implicit val twitchClient = TestIO.createTwitchClient(
@@ -116,7 +143,9 @@ class UserInfoSpec
       val applyOnLogging = new (~>[Id]) {
         var written: (String, LogLevel) = ("", Debug)
 
-        override def apply[A, B](a: Id[A], b: Id[B])(implicit ev2: B <:< LogLevel): (A, B) = {
+        override def apply[A, B](a: Id[A], b: Id[B])(
+          implicit ev2: B <:< LogLevel
+        ): (A, B) = {
           written = (a.asInstanceOf[Id[String]], b)
           (a, b)
         }
@@ -139,8 +168,8 @@ class UserInfoSpec
 
       userInfo.tell(ReplyAccessToken(dummyAccessToken), probe.ref)
       probe.expectMsg( AskAccessToken)
-
-      succeed
+      assert(applyOnLogging.written._1 == expected)
+      assert(applyOnLogging.written._2 == Debug)
     }
   }
 

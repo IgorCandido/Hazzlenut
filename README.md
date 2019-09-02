@@ -2,14 +2,8 @@ Work list:
 
 - Implement logging
     - Using log-effect
-        Create a layer that transforms the F into a future (cause we are using lightbend products) 
-        and allow us to then pipe
-        the future to self to allows to continue on result of log (???). Maybe just flatMap on it...
-        Note( for comprehension seems to do the trick, need to add tests to make sure that the actor calls indeed the
-        function that we are yielding(fetchAccessToken))
-        Layer on the user info that logs is not terminating so Akka considers that the message was not handled and initiates
-        the actor again (UserInfo), have to maybe pipe to result to self and see if message is considered handled and 
-        logging is done
+        Add more tests
+        Fix message on hazzlenut errors ("Test" dummy needs replacing)
 - Implement twitch get followers (for now polling)
     - Implemented with actor
     - Asks UserInfo
