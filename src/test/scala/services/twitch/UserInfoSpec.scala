@@ -113,7 +113,7 @@ class UserInfoSpec
 
     "Log error when failing to get user" in {
       val expected =
-        """Failure on call to get User with error Throwable: message: Test, stackTrace: hazzlenut.errors.HazzlenutError$UnableToConnect$: Test
+        """Failure on call to get User with error Throwable: message: None, stackTrace: hazzlenut.errors.HazzlenutError$UnableToConnect$
 	at hazzlenut.errors.HazzlenutError$UnableToConnect$.<clinit>(HazzlenutError.scala)
 	at services.twitch.UserInfoSpec.$anonfun$new$12(UserInfoSpec.scala:141)
 	at utils.TestIOTwitchClient$$anon$9.user(TestIO.scala:330)

@@ -34,11 +34,15 @@ class UserInfo[F[_]: TwitchClientHandler: TwitchClient: HttpClient: Monad](
   tokenHolder: ActorRef
 )(implicit logprovider: LogProvider[F])
     extends Actor {
+  import TokenHolderApi._
   implicit val system = context.system
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher
 
-  fetchAccessToken()
+  def fetchToken(expiredAccessToken: Boolean = false) =
+    fetchAccessToken(waitingForToken, tokenHolder, expiredAccessToken)
+
+  fetchToken()
 
   override def receive: Receive = Actor.emptyBehavior
 
@@ -57,7 +61,7 @@ class UserInfo[F[_]: TwitchClientHandler: TwitchClient: HttpClient: Monad](
     case user: User                                   => context.become(providingUser(user))
     case Status.Failure(_: UnableToAuthenticate.type) => // What to do when failure on getting User
       // 3 - ReAuthenticate
-      fetchAccessToken(expiredAccessToken = true)
+      fetchToken(expiredAccessToken = true)
     case Status.Failure(error) => {
       // 1 - Retry
       for {
@@ -67,16 +71,8 @@ class UserInfo[F[_]: TwitchClientHandler: TwitchClient: HttpClient: Monad](
           show"Failure on call to get User with error $error"
         )
       } yield
-        fetchAccessToken() // Failed to Get User to get access token and try again
+        fetchToken() // Failed to Get User to get access token and try again
       // 2 - Close app (Scenario not necessary for now)
     }
-  }
-
-  def fetchAccessToken(expiredAccessToken: Boolean = false) = {
-    context.become(waitingForToken)
-    tokenHolder ! (expiredAccessToken match {
-      case true  => TokenExpiredNeedNew
-      case false => AskAccessToken
-    })
   }
 }

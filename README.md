@@ -3,7 +3,8 @@ Work list:
 - Implement logging
     - Using log-effect
         Add more tests
-        Fix message on hazzlenut errors ("Test" dummy needs replacing)
+        Make sure to whilst waiting for the Logger result the actor is already only waiting to 
+        receive the outcome of the logger to run the become function
 - Implement twitch get followers (for now polling)
     - Implemented with actor
     - Asks UserInfo

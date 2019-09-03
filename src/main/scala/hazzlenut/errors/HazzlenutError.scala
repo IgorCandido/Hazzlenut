@@ -15,9 +15,7 @@ object HazzlenutError{
 
   final case object UnableToFetchFollowers extends HazzlenutError
 
-  final case object UnableToConnect extends HazzlenutError {
-    override def getMessage: String = "Test"
-  }
+  final case object UnableToConnect extends HazzlenutError
 
   final case object UnableToAuthenticate extends HazzlenutError
 
