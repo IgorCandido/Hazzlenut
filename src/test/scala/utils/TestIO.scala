@@ -329,7 +329,7 @@ trait TestIOTwitchClient {
         monadError: MonadError[TestIO, HazzlenutError]
       ): TestIO[User] = userReturn
 
-      override def followers(accessToken: AccessToken, userId: String)(
+      override def followers(accessToken: AccessToken, userId: String, cursor: Option[String])(
         implicit actorSystem: ActorSystem,
         materializer: Materializer,
         httpClient: HttpClient[TestIO],
@@ -363,7 +363,7 @@ trait TestIOTwitchClient {
         UnableToFetchUserInformation
       )
 
-    override def followers(accessToken: AccessToken, userId: String)(
+    override def followers(accessToken: AccessToken, userId: String, cursor: Option[String])(
       implicit actorSystem: ActorSystem,
       materializer: Materializer,
       httpClient: HttpClient[TestIO],

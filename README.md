@@ -6,9 +6,9 @@ Work list:
         Make sure to whilst waiting for the Logger result the actor is already only waiting to 
         receive the outcome of the logger to run the become function
 - Implement twitch get followers (for now polling)
-    - Implemented with actor
-    - Asks UserInfo
-    - Asks Token
+    - Implemented with actor (Almost)
+    - Asks UserInfo (Done, not tested)
+    - Asks Token (Done, not tested)
     - When Token can't be renewed should die and be resurected when token starts again
 - Understand if we need to drop user info when the we get new OAuthToken (not refresh but re-authenticate)
 - Write the flow for get followers on a cycle and then publish those to whoever is interested (Events and likely actor on a schedule)

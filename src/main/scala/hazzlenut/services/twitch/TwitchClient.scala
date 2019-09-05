@@ -2,24 +2,14 @@ package hazzlenut.services.twitch
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.headers.OAuth2BearerToken
-import akka.http.scaladsl.model.{
-  HttpRequest,
-  HttpResponse,
-  ResponseEntity,
-  StatusCodes
-}
+import akka.http.scaladsl.model.{HttpRequest, HttpResponse, ResponseEntity, StatusCodes}
 import akka.http.scaladsl.unmarshalling.Unmarshaller
 import akka.stream.Materializer
 import cats.implicits._
 import cats.{Monad, MonadError}
 import hazzlenut.errors.HazzlenutError
-import hazzlenut.errors.HazzlenutError.{
-  HttpError,
-  UnableToAuthenticate,
-  UnableToFetchFollowers,
-  UnableToFetchUserInformation
-}
-import hazzlenut.services.twitch.model.{TwitchError, TwitchReply, User}
+import hazzlenut.errors.HazzlenutError.{HttpError, UnableToAuthenticate, UnableToFetchFollowers, UnableToFetchUserInformation}
+import hazzlenut.services.twitch.model.{FollowersReply, TwitchError, TwitchReply, User}
 import hazzlenut.util.{HttpClient, UnmarshallerEntiy}
 import zio.ZIO
 
@@ -31,7 +21,16 @@ trait TwitchClient[F[_]] {
     monadErrorHazzlenut: MonadError[F, HazzlenutError],
     materializer: Materializer
   ): (HttpResponse) => F[String] = { response =>
-    unmarshallerEntiy.unmarshal[ResponseEntity, TwitchError](response.entity).map(_.message)
+    unmarshallerEntiy
+      .unmarshal[ResponseEntity, TwitchError](response.entity)
+      .map(_.message)
+  }
+
+  def handleUnAuthorizedNonSeq[Out](
+                               implicit monadError: MonadError[F, HazzlenutError]
+                             ): PartialFunction[HazzlenutError, F[Out]] = {
+    case HttpError(StatusCodes.Unauthorized.intValue, _) =>
+      monadError.raiseError(UnableToAuthenticate)
   }
 
   def handleUnAuthorized[Out](
@@ -63,6 +62,32 @@ trait TwitchClient[F[_]] {
     } yield out
   }
 
+  protected def doRequestSimpler[Out](
+    url: String,
+    accessToken: AccessToken,
+    hazzlenutError: HazzlenutError
+  )(implicit actorSystem: ActorSystem,
+    materializer: Materializer,
+    httpClient: HttpClient[F],
+    unmarshallerEntiy: UnmarshallerEntiy[F],
+    unmarshaller: Unmarshaller[ResponseEntity, Out],
+    monadF: Monad[F],
+    monadErrorThrowable: MonadError[F, HazzlenutError]): F[Out] = {
+    (for {
+      httpResult <- httpClient.request(
+        HttpRequest(uri = url)
+          .addCredentials(OAuth2BearerToken(accessToken.accessToken)),
+        extractErrorfromTwitchError
+      )
+      outMaybe <- unmarshallerEntiy
+        .unmarshal[ResponseEntity, Out](httpResult.entity)
+      out <- fromOption[Out](
+        Option(outMaybe),
+        hazzlenutError
+      )
+    } yield out).recoverWith { handleUnAuthorizedNonSeq }
+  }
+
   protected def doRequestSeq[Out](
     url: String,
     accessToken: AccessToken,
@@ -86,7 +111,7 @@ trait TwitchClient[F[_]] {
         Option(outMaybe.data.toSeq).filter(_.nonEmpty),
         hazzlenutError
       )
-    } yield out).recoverWith {handleUnAuthorized}
+    } yield out).recoverWith { handleUnAuthorized }
   }
 
   def user(accessToken: AccessToken)(
@@ -98,14 +123,16 @@ trait TwitchClient[F[_]] {
     monadErrorThrowable: MonadError[F, HazzlenutError]
   ): F[User]
 
-  def followers(accessToken: AccessToken, userId: String)(
+  def followers(accessToken: AccessToken,
+                userId: String,
+                cursor: Option[String])(
     implicit actorSystem: ActorSystem,
     materializer: Materializer,
     httpClient: HttpClient[F],
     unmarshallerEntiy: UnmarshallerEntiy[F],
     monadF: Monad[F],
     monadErrorThrowable: MonadError[F, HazzlenutError]
-  ): F[Seq[User]]
+  ): F[FollowersReply]
 }
 
 object TwitchClient {
@@ -142,7 +169,17 @@ object TwitchClient {
           )
         } yield user
 
-      override def followers(accessToken: AccessToken, userId: String)(
+      private def addQueryStringParameter(
+        url: String
+      )(name: String, value: Option[String]): String =
+        (if (url.exists(_ == '?')) '&' else '?', value) match {
+          case (separator, Some(v)) => s"$url$separator$name=$v"
+          case (_, None)            => url
+        }
+
+      override def followers(accessToken: AccessToken,
+                             userId: String,
+                             cursor: Option[String])(
         implicit actorSystem: ActorSystem,
         materializer: Materializer,
         httpClient: HttpClient[ZIO[Any, HazzlenutError, ?]],
@@ -150,11 +187,13 @@ object TwitchClient {
         monadF: Monad[ZIO[Any, HazzlenutError, ?]],
         monadErrorThrowable: MonadError[ZIO[Any, HazzlenutError, ?],
                                         HazzlenutError]
-      ): ZIO[Any, HazzlenutError, Seq[User]] =
+      ): ZIO[Any, HazzlenutError, FollowersReply] =
         for {
-        // after query string parameter will have the pagination: cursor retrieved on the previous request
-          users <- doRequestSeq[User](
-            s"https://api.twitch.tv/helix/users/follows?to_id=$userId",
+          // after query string parameter will have the pagination: cursor retrieved on the previous request
+          users <- doRequestSimpler[FollowersReply](
+            addQueryStringParameter(
+              s"https://api.twitch.tv/helix/channels/$userId/follows?direction=asc"
+            )("cursor", cursor),
             accessToken,
             UnableToFetchFollowers
           )
