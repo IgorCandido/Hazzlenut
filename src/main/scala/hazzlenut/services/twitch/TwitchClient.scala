@@ -189,7 +189,6 @@ object TwitchClient {
                                         HazzlenutError]
       ): ZIO[Any, HazzlenutError, FollowersReply] =
         for {
-          // after query string parameter will have the pagination: cursor retrieved on the previous request
           users <- doRequestSimpler[FollowersReply](
             addQueryStringParameter(
               s"https://api.twitch.tv/helix/channels/$userId/follows?direction=asc"

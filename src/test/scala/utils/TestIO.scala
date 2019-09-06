@@ -19,7 +19,7 @@ import hazzlenut.errors.HazzlenutError.{
   UnableToFetchUserInformation
 }
 import hazzlenut.handler.{AuthenticationHandler, TwitchClientHandler}
-import hazzlenut.services.twitch.model.User
+import hazzlenut.services.twitch.model.{FollowersReply, User}
 import hazzlenut.services.twitch.{
   AccessToken,
   Configuration,
@@ -309,8 +309,8 @@ trait TestIOUnmarshall {
 trait TestIOTwitchClient {
   def createTwitchClient(
     userReturn: => TestIO[User] = TestIO(Either.right(UserGen.getSample())),
-    followersReturn: TestIO[Seq[User]] = TestIO(
-      Either.right(Seq(UserGen.getSample()))
+    followersReturn: TestIO[FollowersReply] = TestIO(
+      Either.right(FollowersReplyGen.getSample())
     )
   ) =
     new TwitchClient[TestIO] {
@@ -329,14 +329,16 @@ trait TestIOTwitchClient {
         monadError: MonadError[TestIO, HazzlenutError]
       ): TestIO[User] = userReturn
 
-      override def followers(accessToken: AccessToken, userId: String, cursor: Option[String])(
+      override def followers(accessToken: AccessToken,
+                             userId: String,
+                             cursor: Option[String])(
         implicit actorSystem: ActorSystem,
         materializer: Materializer,
         httpClient: HttpClient[TestIO],
         unmarshallerEntiy: UnmarshallerEntiy[TestIO],
         monadF: Monad[TestIO],
         monadError: MonadError[TestIO, HazzlenutError]
-      ): TestIO[Seq[User]] = followersReturn
+      ): TestIO[FollowersReply] = followersReturn
     }
 
   implicit val twitchClient = new TwitchClient[TestIO] {
@@ -363,15 +365,17 @@ trait TestIOTwitchClient {
         UnableToFetchUserInformation
       )
 
-    override def followers(accessToken: AccessToken, userId: String, cursor: Option[String])(
-      implicit actorSystem: ActorSystem,
+    override def followers(
+      accessToken: AccessToken,
+      userId: String,
+      cursor: Option[String]
+    )(implicit actorSystem: ActorSystem,
       materializer: Materializer,
       httpClient: HttpClient[TestIO],
       unmarshallerEntiy: UnmarshallerEntiy[TestIO],
       monadF: Monad[TestIO],
-      monadError: MonadError[TestIO, HazzlenutError]
-    ): TestIO[Seq[User]] =
-      doRequestSeq[User](
+      monadError: MonadError[TestIO, HazzlenutError]): TestIO[FollowersReply] =
+      doRequestSimpler[FollowersReply](
         "http://testUsers",
         accessToken,
         UnableToFetchUserInformation
@@ -391,6 +395,22 @@ trait TestIOTwitchClient {
           .result
           .fold(error => Future.failed(error), user => Future.successful(user))
       }
+
+      override def retrieveFollowers(accessToken: AccessToken,
+                                     userId: String,
+                                     cursor: Option[String])(
+        implicit twitchClient: TwitchClient[TestIO],
+        httpClient: HttpClient[TestIO],
+        actorSystem: ActorSystem,
+        materializer: Materializer
+      ): Future[FollowersReply] =
+        twitchClient
+          .followers(accessToken, userId, cursor)
+          .result
+          .fold(
+            error => Future.failed(error),
+            followers => Future.successful(followers)
+          )
     }
 }
 
@@ -421,7 +441,7 @@ trait TestIOLoggerProvider {
       )
 
   trait ~>[F[_]] {
-    def apply[A, B](a: F[A], b: F[B])(implicit ev2: B <:< LogLevel) : (A, B)
+    def apply[A, B](a: F[A], b: F[B])(implicit ev2: B <:< LogLevel): (A, B)
   }
 
   def createLogProvider(f: ~>[Id]): LogProvider[TestIO] = {
