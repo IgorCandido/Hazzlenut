@@ -359,11 +359,14 @@ trait TestIOTwitchClient {
       monadF: Monad[TestIO],
       monadError: MonadError[TestIO, HazzlenutError]
     ): TestIO[User] =
+    {
+      import hazzlenut.services.twitch.model.TwitchReply._
       doRequest[User](
         "http://testUser",
         accessToken,
         UnableToFetchUserInformation
       )
+    }
 
     override def followers(
       accessToken: AccessToken,

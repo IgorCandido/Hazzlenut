@@ -8,11 +8,8 @@ import cats.implicits._
 import hazzlenut.errors.HazzlenutError.UnableToAuthenticate
 import hazzlenut.handler.TwitchClientHandler
 import hazzlenut.handler.TwitchClientHandler.dsl._
-import hazzlenut.services.twitch.TokenHolder.{
-  AskAccessToken,
-  ReplyAccessToken,
-  TokenExpiredNeedNew
-}
+import hazzlenut.services.twitch.TokenGuardian.ApplicationStarted
+import hazzlenut.services.twitch.TokenHolder.{AskAccessToken, ReplyAccessToken, TokenExpiredNeedNew}
 import hazzlenut.services.twitch.UserInfo.{ProvideUser, RetrieveUser}
 import hazzlenut.services.twitch.model.User
 import hazzlenut.util.{HttpClient, LogProvider}
@@ -21,8 +18,8 @@ import hazzlenut.util.ShowUtils._
 
 object UserInfo {
   def props[F[_]: TwitchClientHandler: TwitchClient: HttpClient: LogProvider: Monad](
-    tokenHolder: ActorRef
-  ): Props = Props(new UserInfo(tokenHolder))
+    tokenGuardian: ActorRef
+  ): Props = Props(new UserInfo(tokenGuardian))
 
   case object RetrieveUser
   case class ProvideUser(user: User)
@@ -40,11 +37,7 @@ class UserInfo[F[_]: TwitchClientHandler: TwitchClient: HttpClient: Monad](
   implicit val executionContext = system.dispatcher
 
   def fetchToken(expiredAccessToken: Boolean = false) =
-    fetchAccessToken(waitingForToken, tokenHolder, expiredAccessToken)
-
-  fetchToken()
-
-  override def receive: Receive = Actor.emptyBehavior
+    fetchAccessToken(waitingForToken, tokenHolder, self, expiredAccessToken)
 
   def providingUser(user: User): Receive = {
     case RetrieveUser =>
@@ -74,5 +67,10 @@ class UserInfo[F[_]: TwitchClientHandler: TwitchClient: HttpClient: Monad](
         fetchToken() // Failed to Get User to get access token and try again
       // 2 - Close app (Scenario not necessary for now)
     }
+  }
+
+  override def receive: Receive = {
+    case ApplicationStarted =>
+      fetchToken()
   }
 }

@@ -21,6 +21,7 @@ class AuthenticationSpec
   "Authentication route" should {
     "Send AccessToken to TokenGuardian when oauth reauthentication is finished" in {
       val tokenGuardianProbe = TestProbe()
+      val userInfoProbe = TestProbe()
       val accessToken = AccessToken(
         accessToken = "authed",
         tokenType = "",
@@ -28,7 +29,6 @@ class AuthenticationSpec
         refreshToken = "242adas".some
       )
 
-      implicit val tokenGuardianRef = tokenGuardianProbe.ref
       implicit val authenticationHander =
         TestIO.authenticationHandlerWithValues(
           obtainOAuthValue = Future.successful(accessToken)
@@ -38,7 +38,7 @@ class AuthenticationSpec
       implicit val twitchHandler = TestIO.twitchHandler
       implicit val httpClient: HttpClient[TestIO] = TestIO.defaultEmptyResponseHttpClient
 
-      val authenticationRoute = Authentication.route
+      val authenticationRoute = Authentication.route(tokenGuardianProbe.ref, userInfoProbe.ref)
 
       Get("/oauth/reply?code=testCode") ~> authenticationRoute ~> check {
         handled should ===(true)

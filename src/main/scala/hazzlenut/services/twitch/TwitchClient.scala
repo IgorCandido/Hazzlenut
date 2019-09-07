@@ -108,7 +108,7 @@ trait TwitchClient[F[_]] {
       outMaybe <- unmarshallerEntiy
         .unmarshal[ResponseEntity, TwitchReply[Out]](httpResult.entity)
       out <- fromOption[Seq[Out]](
-        Option(outMaybe.data.toSeq).filter(_.nonEmpty),
+        outMaybe.data.map(_.toSeq).filter(_.nonEmpty),
         hazzlenutError
       )
     } yield out).recoverWith { handleUnAuthorized }
@@ -160,7 +160,9 @@ object TwitchClient {
         monadF: Monad[ZIO[Any, HazzlenutError, ?]],
         monadErrorThrowable: MonadError[ZIO[Any, HazzlenutError, ?],
                                         HazzlenutError]
-      ): ZIO[Any, HazzlenutError, User] =
+      ): ZIO[Any, HazzlenutError, User] = {
+        import TwitchReply._
+
         for {
           user <- doRequest[User](
             "https://api.twitch.tv/helix/users",
@@ -168,6 +170,7 @@ object TwitchClient {
             UnableToFetchUserInformation
           )
         } yield user
+      }
 
       private def addQueryStringParameter(
         url: String
@@ -191,7 +194,7 @@ object TwitchClient {
         for {
           users <- doRequestSimpler[FollowersReply](
             addQueryStringParameter(
-              s"https://api.twitch.tv/helix/channels/$userId/follows?direction=asc"
+              s"https://api.twitch.tv/helix/users/follows?to_id=$userId&direction=asc"
             )("cursor", cursor),
             accessToken,
             UnableToFetchFollowers

@@ -11,14 +11,15 @@ final case object TokenHolderApi {
 
   def fetchAccessToken(
     waitingForToken: Receive,
-    tokenHolder: ActorRef,
+    tokenGuardian: ActorRef,
+    sender: ActorRef,
     expiredAccessToken: Boolean = false
   )(implicit context: ActorContext) = {
     context.become(waitingForToken)
-    tokenHolder ! (expiredAccessToken match {
+    tokenGuardian.tell(expiredAccessToken match {
       case true  => TokenExpiredNeedNew
       case false => AskAccessToken
-    })
+    }, sender)
   }
 
 }

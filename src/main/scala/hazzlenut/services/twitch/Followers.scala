@@ -31,7 +31,7 @@ class Followers(tokenHolder: ActorRef, userInfo: ActorRef) extends Actor {
   override def receive: Receive = Actor.emptyBehavior
 
   def fetchToken(expiredAccessToken: Boolean = false) =
-    fetchAccessToken(waitingForToken, tokenHolder, expiredAccessToken)
+    fetchAccessToken(waitingForToken, tokenHolder, self, expiredAccessToken)
 
   def waitingForToken: Receive = {
     case ReplyAccessToken(accessToken) => {
