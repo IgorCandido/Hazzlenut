@@ -53,7 +53,6 @@ trait TwitchClient[F[_]] {
     httpClient: HttpClient[F],
     unmarshallerEntiy: UnmarshallerEntiy[F],
     unmarshaller: Unmarshaller[ResponseEntity, TwitchReply[Out]],
-    monadF: Monad[F],
     monadErrorThrowable: MonadError[F, HazzlenutError]): F[Out] = {
     for {
       httpResult <- doRequestSeq[Out](url, accessToken, hazzlenutError)
@@ -71,7 +70,6 @@ trait TwitchClient[F[_]] {
     httpClient: HttpClient[F],
     unmarshallerEntiy: UnmarshallerEntiy[F],
     unmarshaller: Unmarshaller[ResponseEntity, Out],
-    monadF: Monad[F],
     monadErrorThrowable: MonadError[F, HazzlenutError]): F[Out] = {
     (for {
       httpResult <- httpClient.request(
@@ -97,7 +95,6 @@ trait TwitchClient[F[_]] {
     httpClient: HttpClient[F],
     unmarshallerEntiy: UnmarshallerEntiy[F],
     unmarshaller: Unmarshaller[ResponseEntity, TwitchReply[Out]],
-    monadF: Monad[F],
     monadErrorThrowable: MonadError[F, HazzlenutError]): F[Seq[Out]] = {
     (for {
       httpResult <- httpClient.request(

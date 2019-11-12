@@ -1,5 +1,11 @@
 Work list:
 
+- Constants on CustomSerialization TwitchReply.scala
+- FIX THE HARDCODED URLS ON THE ZIO IMPLEMENTATION OF TWITCH CLIENT (SHOULD REALLY BE AGNOSTIC TO ZIO OR FUTURE THE URL DEFINITION)
+- Aggregate the common references through the code into a ADT container (ActorSystem, Materializer, Marshellers HttpClient)
+
+- Figure out what is the right format for Followers get and if just TwitchReply[Follower] just remove the ReqSimpler
+
 - Understand why the TwitchReply RootJsonFormat isn't being correctly imported implicitly 
 (without importing in the context of the method it says that if finds an ambiguous method to apply)
     - Implement tests to assure that the serialization and deserializion of the hand rolled json formating works

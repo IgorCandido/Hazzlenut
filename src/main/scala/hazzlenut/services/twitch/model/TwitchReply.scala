@@ -8,7 +8,7 @@ import spray.json.{DefaultJsonProtocol, JsValue, RootJsonFormat, _}
 import scala.reflect.ClassTag
 
 case class TwitchReply[T](total: Option[Long],
-                          data: Option[Array[T]],
+                          data: Option[List[T]],
                           pagination: Option[Pagination])
 case class Pagination(cursor: String)
 
@@ -28,16 +28,16 @@ object TwitchReply extends SprayJsonSupport with DefaultJsonProtocol {
       addToSeq[T](seq, name, value, f)
   }
 
-  implicit def twitchReplyFormat[T: ClassTag](
+  implicit def twitchReplyFormat[T](
     implicit formaterT: RootJsonFormat[T]
   ): RootJsonFormat[TwitchReply[T]] = new RootJsonFormat[TwitchReply[T]] {
     val fieldNames = Seq("total", "pagination", "data")
 
-    def transformJsArray[A: ClassTag](
+    def transformJsArray[A](
       jsValue: JsValue
-    )(implicit fmt: RootJsonFormat[A]): Option[Array[A]] =
+    )(implicit fmt: RootJsonFormat[A]): Option[List[A]] =
       jsValue match {
-        case JsArray(values) => values.map(_.convertTo[A]).toArray.some
+        case JsArray(values) => values.map(_.convertTo[A]).toList.some
         case _               => None
       }
 
@@ -62,7 +62,7 @@ object TwitchReply extends SprayJsonSupport with DefaultJsonProtocol {
     override def write(obj: TwitchReply[T]): JsValue =
       JsObject(Seq.empty[(String,JsValue)]
         .addElement[Long]("total", obj.total, t => JsNumber(t))
-        .addElement[Array[T]]("pagination", obj.data, t => JsArray(t.map(formaterT.write(_)):_*) )
+        .addElement[List[T]]("data", obj.data, t => JsArray(t.map(formaterT.write(_)):_*) )
         .addElement[Pagination]("pagination", obj.pagination, t => implicitly[RootJsonFormat[Pagination]].write(t)): _*)
   }
 }

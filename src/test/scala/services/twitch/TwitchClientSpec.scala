@@ -154,7 +154,7 @@ class TwitchClientSpec extends WordSpec with Matchers with BeforeAndAfterAll {
         TestIO.unmarshallerEntiy(
           TestIO(
             Either.right[HazzlenutError, TwitchReply[User]](
-              TwitchReply(total= None, data = Option(Array.empty[User]), pagination = None)
+              TwitchReply(total= None, data = Option(List.empty[User]), pagination = None)
             )
           )
         )
