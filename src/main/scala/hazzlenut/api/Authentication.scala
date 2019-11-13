@@ -11,9 +11,9 @@ import hazzlenut.handler.{AuthenticationHandler, TwitchClientHandler}
 import hazzlenut.handler.TwitchClientHandler.dsl._
 import hazzlenut.services.twitch.TokenGuardian.Authenticated
 import hazzlenut.services.twitch.TokenHolder.{AskAccessToken, ReplyAccessToken}
-import hazzlenut.services.twitch.TwitchClient
+import hazzlenut.services.twitch.{CommonReferences, TwitchClient}
 import hazzlenut.services.twitch.UserInfo.{ProvideUser, RetrieveUser}
-import hazzlenut.util.HttpClient
+import hazzlenut.util.{HttpClient, UnmarshallerEntiy}
 import zio.ZIO
 
 import scala.concurrent.duration._
@@ -25,7 +25,7 @@ object Authentication {
     route[ZIO[Any, HazzlenutError, ?]](tokenGuardian, userInfo)
   }
 
-  def route[F[_]: TwitchClientHandler: TwitchClient: HttpClient](
+  def route[F[_]: TwitchClientHandler: TwitchClient: HttpClient: UnmarshallerEntiy](
     tokenGuardian: ActorRef,
     userInfo: ActorRef
   )(implicit a: AuthenticationHandler): Route = {

@@ -1,33 +1,15 @@
 package utils
 import akka.actor.{ActorContext, ActorRef, ActorSystem}
-import akka.http.scaladsl.model.{
-  ContentTypes,
-  HttpEntity,
-  HttpRequest,
-  HttpResponse,
-  StatusCode,
-  StatusCodes
-}
+import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpRequest, HttpResponse, StatusCode, StatusCodes}
 import akka.http.scaladsl.unmarshalling.{Unmarshal, Unmarshaller}
 import akka.stream.Materializer
 import cats.implicits._
 import cats.{Id, Monad, MonadError}
 import hazzlenut.errors.HazzlenutError
-import hazzlenut.errors.HazzlenutError.{
-  ThrowableError,
-  UnableToConnect,
-  UnableToFetchUserInformation
-}
+import hazzlenut.errors.HazzlenutError.{ThrowableError, UnableToConnect, UnableToFetchUserInformation}
 import hazzlenut.handler.{AuthenticationHandler, TwitchClientHandler}
 import hazzlenut.services.twitch.model.{FollowersReply, User}
-import hazzlenut.services.twitch.{
-  AccessToken,
-  Configuration,
-  OAuth,
-  TwitchClient,
-  UserInfo,
-  UserInfoInitializer
-}
+import hazzlenut.services.twitch.{AccessToken, CommonReferences, Configuration, OAuth, TwitchClient, UserInfo, UserInfoInitializer}
 import hazzlenut.util.MapGetterValidation.ConfigurationValidation
 import hazzlenut.util.{HttpClient, LogProvider, UnmarshallerEntiy}
 import log.effect.{LogLevel, LogWriter, LogWriterConstructor, internal}
@@ -321,22 +303,14 @@ trait TestIOTwitchClient {
         ???
 
       override def user(accessToken: AccessToken)(
-        implicit actorSystem: ActorSystem,
-        materializer: Materializer,
-        httpClient: HttpClient[TestIO],
-        unmarshallerEntiy: UnmarshallerEntiy[TestIO],
-        monadF: Monad[TestIO],
+        implicit commonReferences: CommonReferences[TestIO],
         monadError: MonadError[TestIO, HazzlenutError]
       ): TestIO[User] = userReturn
 
       override def followers(accessToken: AccessToken,
                              userId: String,
                              cursor: Option[String])(
-        implicit actorSystem: ActorSystem,
-        materializer: Materializer,
-        httpClient: HttpClient[TestIO],
-        unmarshallerEntiy: UnmarshallerEntiy[TestIO],
-        monadF: Monad[TestIO],
+        implicit commonReferences: CommonReferences[TestIO],
         monadError: MonadError[TestIO, HazzlenutError]
       ): TestIO[FollowersReply] = followersReturn
     }
@@ -352,11 +326,7 @@ trait TestIOTwitchClient {
       }
 
     override def user(accessToken: AccessToken)(
-      implicit actorSystem: ActorSystem,
-      materializer: Materializer,
-      httpClient: HttpClient[TestIO],
-      unmarshallerEntiy: UnmarshallerEntiy[TestIO],
-      monadF: Monad[TestIO],
+      implicit commonReferences: CommonReferences[TestIO],
       monadError: MonadError[TestIO, HazzlenutError]
     ): TestIO[User] =
     {
@@ -372,26 +342,22 @@ trait TestIOTwitchClient {
       accessToken: AccessToken,
       userId: String,
       cursor: Option[String]
-    )(implicit actorSystem: ActorSystem,
-      materializer: Materializer,
-      httpClient: HttpClient[TestIO],
-      unmarshallerEntiy: UnmarshallerEntiy[TestIO],
-      monadF: Monad[TestIO],
-      monadError: MonadError[TestIO, HazzlenutError]): TestIO[FollowersReply] =
+    )(implicit commonReferences: CommonReferences[TestIO],
+      monadError: MonadError[TestIO, HazzlenutError]): TestIO[FollowersReply] = {
+      import commonReferences._
       doRequestSimpler[FollowersReply](
         "http://testUsers",
         accessToken,
         UnableToFetchUserInformation
       )
+    }
   }
 
   implicit val twitchHandler =
     new TwitchClientHandler[TestIO] {
       override def retrieveUser(accessToken: AccessToken)(
         implicit twitchClient: TwitchClient[TestIO],
-        httpClient: HttpClient[TestIO],
-        actorSystem: ActorSystem,
-        materializer: Materializer
+        commonReferences: CommonReferences[TestIO]
       ): Future[User] = {
         twitchClient
           .user(accessToken)
@@ -403,9 +369,7 @@ trait TestIOTwitchClient {
                                      userId: String,
                                      cursor: Option[String])(
         implicit twitchClient: TwitchClient[TestIO],
-        httpClient: HttpClient[TestIO],
-        actorSystem: ActorSystem,
-        materializer: Materializer
+        commonReferences: CommonReferences[TestIO]
       ): Future[FollowersReply] =
         twitchClient
           .followers(accessToken, userId, cursor)

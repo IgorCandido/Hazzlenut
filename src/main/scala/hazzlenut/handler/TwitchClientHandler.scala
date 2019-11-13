@@ -3,7 +3,7 @@ package hazzlenut.handler
 import akka.actor.ActorSystem
 import akka.stream.Materializer
 import hazzlenut.errors.HazzlenutError
-import hazzlenut.services.twitch.{AccessToken, TwitchClient}
+import hazzlenut.services.twitch.{AccessToken, CommonReferences, TwitchClient}
 import hazzlenut.services.twitch.model.{FollowersReply, User}
 import hazzlenut.util.HttpClient
 import zio.ZIO
@@ -15,18 +15,14 @@ import scala.concurrent.Future
 trait TwitchClientHandler[F[_]] {
   def retrieveUser(accessToken: AccessToken)(
     implicit twitchClient: TwitchClient[F],
-    httpClient: HttpClient[F],
-    actorSystem: ActorSystem,
-    materializer: Materializer
+    commonReferences: CommonReferences[F]
   ): Future[User]
 
   def retrieveFollowers(accessToken: AccessToken,
                         userId: String,
                         cursor: Option[String])(
     implicit twitchClient: TwitchClient[F],
-    httpClient: HttpClient[F],
-    actorSystem: ActorSystem,
-    materializer: Materializer
+    commonReferences: CommonReferences[F]
   ): Future[FollowersReply]
 }
 
@@ -35,9 +31,7 @@ object TwitchClientHandler {
     def retrieveUser[F[_]](accessToken: AccessToken)(
       implicit twitchClientHandler: TwitchClientHandler[F],
       twitchClient: TwitchClient[F],
-      httpClient: HttpClient[F],
-      actorSystem: ActorSystem,
-      materializer: Materializer
+      commonReferences: CommonReferences[F]
     ): Future[User] = twitchClientHandler.retrieveUser(accessToken)
 
     def retrieveFollowers[F[_]](accessToken: AccessToken,
@@ -45,9 +39,7 @@ object TwitchClientHandler {
                                 cursor: Option[String])(
       implicit twitchClientHandler: TwitchClientHandler[F],
       twitchClient: TwitchClient[F],
-      httpClient: HttpClient[F],
-      actorSystem: ActorSystem,
-      materializer: Materializer
+      commonReferences: CommonReferences[F]
     ): Future[FollowersReply] =
       twitchClientHandler.retrieveFollowers(accessToken, userId, cursor)
   }
@@ -58,9 +50,7 @@ object TwitchClientHandler {
 
       override def retrieveUser(accessToken: AccessToken)(
         implicit twitchClient: TwitchClient[ZIO[Any, HazzlenutError, ?]],
-        httpClient: HttpClient[ZIO[Any, HazzlenutError, ?]],
-        actorSystem: ActorSystem,
-        materializer: Materializer
+        commonReferences: CommonReferences[ZIO[Any, HazzlenutError, ?]]
       ): Future[User] = {
         val getUser = twitchClient.user(accessToken)
 
@@ -71,9 +61,7 @@ object TwitchClientHandler {
                                      userId: String,
                                      cursor: Option[String])(
         implicit twitchClient: TwitchClient[ZIO[Any, HazzlenutError, ?]],
-        httpClient: HttpClient[ZIO[Any, HazzlenutError, ?]],
-        actorSystem: ActorSystem,
-        materializer: Materializer
+        commonReferences: CommonReferences[ZIO[Any, HazzlenutError, ?]]
       ): Future[FollowersReply] = {
         val getFollower = twitchClient.followers(accessToken, userId, cursor)
 

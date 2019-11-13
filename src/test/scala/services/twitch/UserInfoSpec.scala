@@ -7,15 +7,11 @@ import cats.implicits._
 import hazzlenut.errors.HazzlenutError.{UnableToAuthenticate, UnableToConnect}
 import hazzlenut.handler.TwitchClientHandler
 import hazzlenut.services.twitch.TokenGuardian.ApplicationStarted
-import hazzlenut.services.twitch.TokenHolder.{
-  AskAccessToken,
-  ReplyAccessToken,
-  TokenExpiredNeedNew
-}
+import hazzlenut.services.twitch.TokenHolder.{AskAccessToken, ReplyAccessToken, TokenExpiredNeedNew}
 import hazzlenut.services.twitch.{TwitchClient, UserInfo}
 import hazzlenut.services.twitch.UserInfo.{ProvideUser, RetrieveUser}
 import hazzlenut.services.twitch.model.User
-import hazzlenut.util.{HttpClient, LogProvider}
+import hazzlenut.util.{HttpClient, LogProvider, UnmarshallerEntiy}
 import log.effect.LogLevel
 import log.effect.LogLevels.Debug
 import org.scalatest.{AsyncWordSpecLike, BeforeAndAfterAll, Matchers}
@@ -36,7 +32,7 @@ class UserInfoSpec
 
   "UserInfo" should {
 
-    def createUserInfoAndStart[F[_]: TwitchClientHandler: TwitchClient: HttpClient: LogProvider: Monad](
+    def createUserInfoAndStart[F[_]: TwitchClientHandler: TwitchClient: HttpClient: LogProvider: Monad: UnmarshallerEntiy](
       actorRef: ActorRef
     ): ActorRef =
       system.actorOf(UserInfo.props[F](actorRef)).tap(_ ! ApplicationStarted)
@@ -145,7 +141,8 @@ class UserInfoSpec
           implicitly[TwitchClient[TestIO]],
           implicitly[HttpClient[TestIO]],
           providerLog,
-          implicitly[Monad[TestIO]]
+          implicitly[Monad[TestIO]],
+          implicitly[UnmarshallerEntiy[TestIO]]
         )
 
       probe.expectMsg(AskAccessToken)

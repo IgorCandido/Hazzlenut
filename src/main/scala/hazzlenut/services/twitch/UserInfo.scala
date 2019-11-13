@@ -12,12 +12,12 @@ import hazzlenut.services.twitch.TokenGuardian.ApplicationStarted
 import hazzlenut.services.twitch.TokenHolder.{AskAccessToken, ReplyAccessToken, TokenExpiredNeedNew}
 import hazzlenut.services.twitch.UserInfo.{ProvideUser, RetrieveUser}
 import hazzlenut.services.twitch.model.User
-import hazzlenut.util.{HttpClient, LogProvider}
+import hazzlenut.util.{HttpClient, LogProvider, UnmarshallerEntiy}
 import log.effect.LogLevels.Debug
 import hazzlenut.util.ShowUtils._
 
 object UserInfo {
-  def props[F[_]: TwitchClientHandler: TwitchClient: HttpClient: LogProvider: Monad](
+  def props[F[_]: TwitchClientHandler: TwitchClient: HttpClient: LogProvider: Monad: UnmarshallerEntiy](
     tokenGuardian: ActorRef
   ): Props = Props(new UserInfo(tokenGuardian))
 
@@ -27,7 +27,7 @@ object UserInfo {
 
 // Killed when TokenHolder is killed in order to reAuthenticated
 // Created as soon as the Token is retrieved for a TokenHolder
-class UserInfo[F[_]: TwitchClientHandler: TwitchClient: HttpClient: Monad](
+class UserInfo[F[_]: TwitchClientHandler: TwitchClient: HttpClient: Monad: UnmarshallerEntiy](
   tokenHolder: ActorRef
 )(implicit logprovider: LogProvider[F])
     extends Actor {

@@ -17,6 +17,10 @@ object Pagination extends SprayJsonSupport with DefaultJsonProtocol {
 }
 
 object TwitchReply extends SprayJsonSupport with DefaultJsonProtocol {
+  val TOTAL_LABEL = "total"
+  val DATA_LABEL = "data"
+  val PAGING_LABEL = "pagination"
+
   implicit class SeqHelper[B, C](val seq: Seq[(B, C)]) extends AnyVal{
     def addToSeq[T](seqElements: Seq[(B, C)], name: B, value: Option[T], f: T => C): Seq[(B, C)] =
       value match {
@@ -31,7 +35,7 @@ object TwitchReply extends SprayJsonSupport with DefaultJsonProtocol {
   implicit def twitchReplyFormat[T](
     implicit formaterT: RootJsonFormat[T]
   ): RootJsonFormat[TwitchReply[T]] = new RootJsonFormat[TwitchReply[T]] {
-    val fieldNames = Seq("total", "pagination", "data")
+    val fieldNames = Seq(TOTAL_LABEL, PAGING_LABEL, DATA_LABEL)
 
     def transformJsArray[A](
       jsValue: JsValue
@@ -50,19 +54,17 @@ object TwitchReply extends SprayJsonSupport with DefaultJsonProtocol {
       })
 
       TwitchReply(
-        values.get("total").map(_.convertTo[Long]),
-        values.get("data").flatMap(transformJsArray[T]),
-        values.get("pagination").map(_.convertTo[Pagination])
+        values.get(TOTAL_LABEL).map(_.convertTo[Long]),
+        values.get(DATA_LABEL).flatMap(transformJsArray[T]),
+        values.get(PAGING_LABEL).map(_.convertTo[Pagination])
       )
 
     }
 
-
-
     override def write(obj: TwitchReply[T]): JsValue =
       JsObject(Seq.empty[(String,JsValue)]
-        .addElement[Long]("total", obj.total, t => JsNumber(t))
-        .addElement[List[T]]("data", obj.data, t => JsArray(t.map(formaterT.write(_)):_*) )
-        .addElement[Pagination]("pagination", obj.pagination, t => implicitly[RootJsonFormat[Pagination]].write(t)): _*)
+        .addElement[Long](TOTAL_LABEL, obj.total, t => JsNumber(t))
+        .addElement[List[T]](DATA_LABEL, obj.data, t => JsArray(t.map(formaterT.write(_)):_*) )
+        .addElement[Pagination](PAGING_LABEL, obj.pagination, t => implicitly[RootJsonFormat[Pagination]].write(t)): _*)
   }
 }
