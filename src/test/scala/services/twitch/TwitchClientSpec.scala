@@ -22,12 +22,53 @@ class TwitchClientSpec extends WordSpec with Matchers with BeforeAndAfterAll {
 
   val accessToken =
     AccessToken("dummyAccessToken", "bearer", 2000, "v3m3mn983nvu3nuv3".some)
-  val defaultReply =
-    "{\"data\":[{\"id\":\"55407179\",\"login\":\"igrcndd\",\"display_name\":\"igrcndd\",\"type\":\"\",\"broadcaster_type\":\"affiliate\",\"description\":\"I am a stream hobbyist. Trying to put enough time to put something that is worth watching with decent quality. I really enjoy interacting with viewers.Twitter: @igrcndd\",\"profile_image_url\":\"https://static-cdn.jtvnw.net/jtv_user_pictures/42c29bc3-8267-490c-84c8-5d695b16a62f-profile_image-300x300.png\",\"offline_image_url\":\"https://static-cdn.jtvnw.net/jtv_user_pictures/d71aedc3628eae34-channel_offline_image-1920x1080.jpeg\",\"view_count\":6420}]}"
+  val defaultUserReply =
+    """{
+      |"data":
+      | [
+      |   {
+      |    "id":"55407179",
+      |    "login":"igrcndd",
+      |    "display_name":"igrcndd",
+      |    "type":"",
+      |    "broadcaster_type":"affiliate",
+      |    "description":"I am a stream hobbyist. Trying to put enough time to put something that is worth watching with decent quality. I really enjoy interacting with viewers.Twitter: @igrcndd",
+      |    "profile_image_url":"https://static-cdn.jtvnw.net/jtv_user_pictures/42c29bc3-8267-490c-84c8-5d695b16a62f-profile_image-300x300.png",
+      |    "offline_image_url":"https://static-cdn.jtvnw.net/jtv_user_pictures/d71aedc3628eae34-channel_offline_image-1920x1080.jpeg",
+      |    "view_count":6420
+      |    }
+      |  ]
+      |}""".stripMargin
+
+  val defaultFollowersReply =
+  """{
+      |   "total": 12345,
+      |   "data":
+      |   [
+      |      {
+      |         "from_id": "171003792",
+      |         "from_name": "IIIsutha067III",
+      |         "to_id": "23161357",
+      |         "to_name": "LIRIK",
+      |         "followed_at": "2017-08-22T22:55:24Z"
+      |      },
+      |      {
+      |         "from_id": "113627897",
+      |         "from_name": "Birdman616",
+      |         "to_id": "23161357",
+      |         "to_name": "LIRIK",
+      |         "followed_at": "2017-08-22T22:55:04Z"
+      |      }
+      |   ],
+      |   "pagination":{
+      |     "cursor": "eyJiIjpudWxsLCJhIjoiMTUwMzQ0MTc3NjQyNDQyMjAwMCJ9"
+      |   }
+      |}
+      |""".stripMargin
 
   "TwitchClient" should {
     "get user when access token provided" in {
-      implicit val httpClient = TestIO.httpClientSucess(defaultReply)
+      implicit val httpClient = TestIO.httpClientSucess(defaultUserReply)
 
       val client = TestIO.twitchClient
       val reply = client.user(accessToken)
@@ -48,6 +89,21 @@ class TwitchClientSpec extends WordSpec with Matchers with BeforeAndAfterAll {
             ),
             'view_count (6420)
           )
+        }
+      )
+    }
+
+    "get followers when access token provided" in {
+      implicit val httpClient = TestIO.httpClientSucess(defaultFollowersReply)
+
+      val client = TestIO.twitchClient
+      val reply = client.followers(accessToken, "123", None)
+      val followersOrError = reply.result
+
+      followersOrError.fold(
+        error => fail("failed to retrieve user", error),
+        followers => {
+          followers should have length 2
         }
       )
     }
@@ -123,7 +179,7 @@ class TwitchClientSpec extends WordSpec with Matchers with BeforeAndAfterAll {
     "get user with error on unmarshelling" in {
       val throwable = new Exception("Couldn't parse")
 
-      implicit val httpClient = TestIO.httpClientSucess(defaultReply)
+      implicit val httpClient = TestIO.httpClientSucess(defaultUserReply)
 
       implicit val unmarshaller = TestIO.unmarshallerEntiy(
         TestIO(
@@ -148,7 +204,7 @@ class TwitchClientSpec extends WordSpec with Matchers with BeforeAndAfterAll {
 
     "get user returning no users" in {
       implicit val httpClient: HttpClient[TestIO] =
-        TestIO.httpClientSucess(defaultReply)
+        TestIO.httpClientSucess(defaultUserReply)
 
       implicit val unmarshaller: UnmarshallerEntiy[TestIO] =
         TestIO.unmarshallerEntiy(

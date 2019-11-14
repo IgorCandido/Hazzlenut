@@ -20,12 +20,12 @@ import hazzlenut.errors.HazzlenutError.{
   UnableToFetchUserInformation
 }
 import hazzlenut.services.twitch.model.{
-  FollowersReply,
+  Follow,
   TwitchError,
   TwitchReply,
   User
 }
-import hazzlenut.util.{HttpClient, UnmarshallerEntiy}
+import hazzlenut.util.{UnmarshallerEntiy}
 import zio.ZIO
 
 trait TwitchClient[F[_]] {
@@ -65,7 +65,6 @@ trait TwitchClient[F[_]] {
   )(implicit commonReferences: CommonReferences[F],
     unmarshaller: Unmarshaller[ResponseEntity, TwitchReply[Out]],
     monadErrorThrowable: MonadError[F, HazzlenutError]): F[Out] = {
-    import commonReferences._
     for {
       httpResult <- doRequestSeq[Out](url, accessToken, hazzlenutError)
       outMaybe = httpResult.headOption
@@ -73,38 +72,14 @@ trait TwitchClient[F[_]] {
     } yield out
   }
 
-  protected def doRequestSimpler[Out](
-    url: String,
-    accessToken: AccessToken,
-    hazzlenutError: HazzlenutError
-  )(implicit actorSystem: ActorSystem,
-    materializer: Materializer,
-    httpClient: HttpClient[F],
-    unmarshallerEntiy: UnmarshallerEntiy[F],
-    unmarshaller: Unmarshaller[ResponseEntity, Out],
-    monadErrorThrowable: MonadError[F, HazzlenutError]): F[Out] = {
-    (for {
-      httpResult <- httpClient.request(
-        HttpRequest(uri = url)
-          .addCredentials(OAuth2BearerToken(accessToken.accessToken)),
-        extractErrorfromTwitchError
-      )
-      outMaybe <- unmarshallerEntiy
-        .unmarshal[ResponseEntity, Out](httpResult.entity)
-      out <- fromOption[Out](Option(outMaybe), hazzlenutError)
-    } yield out).recoverWith { handleUnAuthorizedNonSeq }
-  }
-
   protected def doRequestSeq[Out](
     url: String,
     accessToken: AccessToken,
     hazzlenutError: HazzlenutError
-  )(implicit actorSystem: ActorSystem,
-    materializer: Materializer,
-    httpClient: HttpClient[F],
-    unmarshallerEntiy: UnmarshallerEntiy[F],
+  )(implicit commonReferences: CommonReferences[F],
     unmarshaller: Unmarshaller[ResponseEntity, TwitchReply[Out]],
     monadErrorThrowable: MonadError[F, HazzlenutError]): F[Seq[Out]] = {
+    import commonReferences._
     (for {
       httpResult <- httpClient.request(
         HttpRequest(uri = url)
@@ -130,7 +105,7 @@ trait TwitchClient[F[_]] {
                 cursor: Option[String])(
     implicit commonReferences: CommonReferences[F],
     monadErrorThrowable: MonadError[F, HazzlenutError]
-  ): F[FollowersReply]
+  ): F[Seq[Follow]]
 }
 
 object TwitchClient {
@@ -181,10 +156,10 @@ object TwitchClient {
         implicit commonReferences: CommonReferences[ZIO[Any, HazzlenutError, ?]],
         monadErrorThrowable: MonadError[ZIO[Any, HazzlenutError, ?],
                                         HazzlenutError]
-      ): ZIO[Any, HazzlenutError, FollowersReply] = {
-        import commonReferences._
+      ): ZIO[Any, HazzlenutError, Seq[Follow]] = {
+        import TwitchReply._
         for {
-          users <- doRequestSimpler[FollowersReply](
+          followers <- doRequestSeq[Follow](
             addQueryStringParameter(FOLLOWERS_URL.format(userId))(
               "cursor",
               cursor
@@ -192,7 +167,7 @@ object TwitchClient {
             accessToken,
             UnableToFetchFollowers
           )
-        } yield users
+        } yield followers
       }
 
       override def fromOption[Out](optionOf: Option[Out],

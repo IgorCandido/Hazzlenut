@@ -1,5 +1,5 @@
 Work list:
-- Figure out what is the right format for Followers get and if just TwitchReply[Follower] just remove the ReqSimpler
+- Make sure to change doRequestSeq to return an object with the Seq the cursor and pagination information (to be able to iterate)
 
 - Clean and reorganize the services.twitch namespace
 
