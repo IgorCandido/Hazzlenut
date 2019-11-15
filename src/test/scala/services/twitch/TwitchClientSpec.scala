@@ -103,7 +103,7 @@ class TwitchClientSpec extends WordSpec with Matchers with BeforeAndAfterAll {
       followersOrError.fold(
         error => fail("failed to retrieve user", error),
         followers => {
-          followers should have length 2
+          followers.seq should have length 2
         }
       )
     }

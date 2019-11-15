@@ -4,7 +4,7 @@ import akka.actor.ActorSystem
 import akka.stream.Materializer
 import hazzlenut.errors.HazzlenutError
 import hazzlenut.services.twitch.{AccessToken, CommonReferences, TwitchClient}
-import hazzlenut.services.twitch.model.{Follow, User}
+import hazzlenut.services.twitch.model.{Follow, TwitchSeqWithMeta, User}
 import hazzlenut.util.HttpClient
 import zio.ZIO
 import zio.interop.catz._
@@ -23,7 +23,7 @@ trait TwitchClientHandler[F[_]] {
                         cursor: Option[String])(
     implicit twitchClient: TwitchClient[F],
     commonReferences: CommonReferences[F]
-  ): Future[Seq[Follow]]
+  ): Future[TwitchSeqWithMeta[Follow]]
 }
 
 object TwitchClientHandler {
@@ -40,7 +40,7 @@ object TwitchClientHandler {
       implicit twitchClientHandler: TwitchClientHandler[F],
       twitchClient: TwitchClient[F],
       commonReferences: CommonReferences[F]
-    ): Future[Seq[Follow]] =
+    ): Future[TwitchSeqWithMeta[Follow]] =
       twitchClientHandler.retrieveFollowers(accessToken, userId, cursor)
   }
 
@@ -62,7 +62,7 @@ object TwitchClientHandler {
                                      cursor: Option[String])(
         implicit twitchClient: TwitchClient[ZIO[Any, HazzlenutError, ?]],
         commonReferences: CommonReferences[ZIO[Any, HazzlenutError, ?]]
-      ): Future[Seq[Follow]] = {
+      ): Future[TwitchSeqWithMeta[Follow]] = {
         val getFollower = twitchClient.followers(accessToken, userId, cursor)
 
         runtime.unsafeRunToFuture(getFollower)

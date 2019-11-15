@@ -1,6 +1,5 @@
 package hazzlenut.services.twitch
 
-import akka.actor.ActorSystem
 import akka.http.scaladsl.model.headers.OAuth2BearerToken
 import akka.http.scaladsl.model.{
   HttpRequest,
@@ -10,8 +9,8 @@ import akka.http.scaladsl.model.{
 }
 import akka.http.scaladsl.unmarshalling.Unmarshaller
 import akka.stream.Materializer
+import cats.MonadError
 import cats.implicits._
-import cats.{Monad, MonadError}
 import hazzlenut.errors.HazzlenutError
 import hazzlenut.errors.HazzlenutError.{
   HttpError,
@@ -21,11 +20,13 @@ import hazzlenut.errors.HazzlenutError.{
 }
 import hazzlenut.services.twitch.model.{
   Follow,
+  Pagination,
   TwitchError,
   TwitchReply,
+  TwitchSeqWithMeta,
   User
 }
-import hazzlenut.util.{UnmarshallerEntiy}
+import hazzlenut.util.UnmarshallerEntiy
 import zio.ZIO
 
 trait TwitchClient[F[_]] {
@@ -49,7 +50,7 @@ trait TwitchClient[F[_]] {
 
   def handleUnAuthorized[Out](
     implicit monadError: MonadError[F, HazzlenutError]
-  ): PartialFunction[HazzlenutError, F[Seq[Out]]] = {
+  ): PartialFunction[HazzlenutError, F[TwitchSeqWithMeta[Out]]] = {
     case HttpError(StatusCodes.Unauthorized.intValue, _) =>
       monadError.raiseError(UnableToAuthenticate)
   }
@@ -67,18 +68,18 @@ trait TwitchClient[F[_]] {
     monadErrorThrowable: MonadError[F, HazzlenutError]): F[Out] = {
     for {
       httpResult <- doRequestSeq[Out](url, accessToken, hazzlenutError)
-      outMaybe = httpResult.headOption
+      outMaybe = httpResult.seq.headOption
       out <- fromOption(outMaybe, hazzlenutError)
     } yield out
   }
 
-  protected def doRequestSeq[Out](
-    url: String,
-    accessToken: AccessToken,
-    hazzlenutError: HazzlenutError
-  )(implicit commonReferences: CommonReferences[F],
+  protected def doRequestSeq[Out](url: String,
+                                  accessToken: AccessToken,
+                                  hazzlenutError: HazzlenutError)(
+    implicit commonReferences: CommonReferences[F],
     unmarshaller: Unmarshaller[ResponseEntity, TwitchReply[Out]],
-    monadErrorThrowable: MonadError[F, HazzlenutError]): F[Seq[Out]] = {
+    monadErrorThrowable: MonadError[F, HazzlenutError]
+  ): F[TwitchSeqWithMeta[Out]] = {
     import commonReferences._
     (for {
       httpResult <- httpClient.request(
@@ -92,7 +93,9 @@ trait TwitchClient[F[_]] {
         outMaybe.data.map(_.toSeq).filter(_.nonEmpty),
         hazzlenutError
       )
-    } yield out).recoverWith { handleUnAuthorized }
+    } yield TwitchSeqWithMeta(out, outMaybe.pagination, outMaybe.total)).recoverWith {
+      handleUnAuthorized
+    }
   }
 
   def user(accessToken: AccessToken)(
@@ -105,7 +108,7 @@ trait TwitchClient[F[_]] {
                 cursor: Option[String])(
     implicit commonReferences: CommonReferences[F],
     monadErrorThrowable: MonadError[F, HazzlenutError]
-  ): F[Seq[Follow]]
+  ): F[TwitchSeqWithMeta[Follow]]
 }
 
 object TwitchClient {
@@ -153,10 +156,12 @@ object TwitchClient {
       override def followers(accessToken: AccessToken,
                              userId: String,
                              cursor: Option[String])(
-        implicit commonReferences: CommonReferences[ZIO[Any, HazzlenutError, ?]],
+        implicit commonReferences: CommonReferences[
+          ZIO[Any, HazzlenutError, ?]
+        ],
         monadErrorThrowable: MonadError[ZIO[Any, HazzlenutError, ?],
                                         HazzlenutError]
-      ): ZIO[Any, HazzlenutError, Seq[Follow]] = {
+      ): ZIO[Any, HazzlenutError, TwitchSeqWithMeta[Follow]] = {
         import TwitchReply._
         for {
           followers <- doRequestSeq[Follow](

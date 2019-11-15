@@ -1,6 +1,4 @@
 Work list:
-- Make sure to change doRequestSeq to return an object with the Seq the cursor and pagination information (to be able to iterate)
-
 - Clean and reorganize the services.twitch namespace
 
 - Understand why the TwitchReply RootJsonFormat isn't being correctly imported implicitly 

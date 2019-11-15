@@ -1,11 +1,12 @@
 package utils
 
-import hazzlenut.services.twitch.model.Follow
+import hazzlenut.services.twitch.model.{Follow, Pagination, TwitchSeqWithMeta}
 import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.Gen
+import cats.implicits._
 
 object FollowersReplyGen {
-  def apply(): Gen[Seq[Follow]] = Gen.sized { size =>
+  def apply(): Gen[TwitchSeqWithMeta[Follow]] = Gen.sized { size =>
     (for {
       from_id <- arbitrary[String]
       from_name <- arbitrary[String]
@@ -14,8 +15,12 @@ object FollowersReplyGen {
       followed_at <- arbitrary[String]
     } yield Follow(from_id, from_name, to_id,to_name, followed_at)).flatMap(
       Gen.listOfN(size, _)
-    )
+    ).flatMap{ follows =>
+      for{
+        cursor <- arbitrary[String]
+      } yield TwitchSeqWithMeta[Follow](follows, Pagination(cursor).some, (follows.length: Long).some)
+    }
   }
 
-  def getSample(): Seq[Follow] = apply().sample.get
+  def getSample(): TwitchSeqWithMeta[Follow] = apply().sample.get
 }

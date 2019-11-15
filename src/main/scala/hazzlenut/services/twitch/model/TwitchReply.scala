@@ -1,11 +1,8 @@
 package hazzlenut.services.twitch.model
 
-
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import cats.implicits._
 import spray.json.{DefaultJsonProtocol, JsValue, RootJsonFormat, _}
-
-import scala.reflect.ClassTag
 
 case class TwitchReply[T](total: Option[Long],
                           data: Option[List[T]],
@@ -21,11 +18,14 @@ object TwitchReply extends SprayJsonSupport with DefaultJsonProtocol {
   val DATA_LABEL = "data"
   val PAGING_LABEL = "pagination"
 
-  implicit class SeqHelper[B, C](val seq: Seq[(B, C)]) extends AnyVal{
-    def addToSeq[T](seqElements: Seq[(B, C)], name: B, value: Option[T], f: T => C): Seq[(B, C)] =
+  implicit class SeqHelper[B, C](val seq: Seq[(B, C)]) extends AnyVal {
+    def addToSeq[T](seqElements: Seq[(B, C)],
+                    name: B,
+                    value: Option[T],
+                    f: T => C): Seq[(B, C)] =
       value match {
         case Some(v) => seqElements :+ name -> f(v)
-        case None => seqElements
+        case None    => seqElements
       }
 
     def addElement[T](name: B, value: Option[T], f: T => C): Seq[(B, C)] =
@@ -62,9 +62,20 @@ object TwitchReply extends SprayJsonSupport with DefaultJsonProtocol {
     }
 
     override def write(obj: TwitchReply[T]): JsValue =
-      JsObject(Seq.empty[(String,JsValue)]
-        .addElement[Long](TOTAL_LABEL, obj.total, t => JsNumber(t))
-        .addElement[List[T]](DATA_LABEL, obj.data, t => JsArray(t.map(formaterT.write(_)):_*) )
-        .addElement[Pagination](PAGING_LABEL, obj.pagination, t => implicitly[RootJsonFormat[Pagination]].write(t)): _*)
+      JsObject(
+        Seq
+          .empty[(String, JsValue)]
+          .addElement[Long](TOTAL_LABEL, obj.total, t => JsNumber(t))
+          .addElement[List[T]](
+            DATA_LABEL,
+            obj.data,
+            t => JsArray(t.map(formaterT.write(_)): _*)
+          )
+          .addElement[Pagination](
+            PAGING_LABEL,
+            obj.pagination,
+            t => implicitly[RootJsonFormat[Pagination]].write(t)
+          ): _*
+      )
   }
 }

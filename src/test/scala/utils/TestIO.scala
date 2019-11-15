@@ -8,7 +8,7 @@ import cats.{Id, Monad, MonadError}
 import hazzlenut.errors.HazzlenutError
 import hazzlenut.errors.HazzlenutError.{ThrowableError, UnableToConnect, UnableToFetchUserInformation}
 import hazzlenut.handler.{AuthenticationHandler, TwitchClientHandler}
-import hazzlenut.services.twitch.model.{Follow, User}
+import hazzlenut.services.twitch.model.{Follow, TwitchSeqWithMeta, User}
 import hazzlenut.services.twitch.{AccessToken, CommonReferences, Configuration, OAuth, TwitchClient, UserInfo, UserInfoInitializer}
 import hazzlenut.util.MapGetterValidation.ConfigurationValidation
 import hazzlenut.util.{HttpClient, LogProvider, UnmarshallerEntiy}
@@ -291,7 +291,7 @@ trait TestIOUnmarshall {
 trait TestIOTwitchClient {
   def createTwitchClient(
     userReturn: => TestIO[User] = TestIO(Either.right(UserGen.getSample())),
-    followersReturn: TestIO[Seq[Follow]] = TestIO(
+    followersReturn: TestIO[TwitchSeqWithMeta[Follow]] = TestIO(
       Either.right(FollowersReplyGen.getSample())
     )
   ) =
@@ -312,7 +312,7 @@ trait TestIOTwitchClient {
                              cursor: Option[String])(
         implicit commonReferences: CommonReferences[TestIO],
         monadError: MonadError[TestIO, HazzlenutError]
-      ): TestIO[Seq[Follow]] = followersReturn
+      ): TestIO[TwitchSeqWithMeta[Follow]] = followersReturn
     }
 
   implicit val twitchClient = new TwitchClient[TestIO] {
@@ -343,7 +343,7 @@ trait TestIOTwitchClient {
       userId: String,
       cursor: Option[String]
     )(implicit commonReferences: CommonReferences[TestIO],
-      monadError: MonadError[TestIO, HazzlenutError]): TestIO[Seq[Follow]] = {
+      monadError: MonadError[TestIO, HazzlenutError]): TestIO[TwitchSeqWithMeta[Follow]] = {
       import hazzlenut.services.twitch.model.TwitchReply._
       doRequestSeq[Follow](
         "http://testUsers",
@@ -370,7 +370,7 @@ trait TestIOTwitchClient {
                                      cursor: Option[String])(
         implicit twitchClient: TwitchClient[TestIO],
         commonReferences: CommonReferences[TestIO]
-      ): Future[Seq[Follow]] =
+      ): Future[TwitchSeqWithMeta[Follow]] =
         twitchClient
           .followers(accessToken, userId, cursor)
           .result
