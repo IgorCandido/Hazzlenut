@@ -6,7 +6,7 @@ import cats.implicits._
 import hazzlenut.errors.HazzlenutError.ThrowableError
 import hazzlenut.services.twitch.{AccessToken, Authenticate}
 import org.scalatest.{Matchers, WordSpec}
-import scalaz.zio.DefaultRuntime
+import zio.DefaultRuntime
 import utils.TestIO
 
 import scala.concurrent.ExecutionContext

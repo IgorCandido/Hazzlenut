@@ -9,3 +9,14 @@ trait TokenHolderInitializer {
     authenticationHandler: AuthenticationHandler
   ): ActorRef
 }
+
+object TokenHolderInitializer {
+  implicit val akkaTokenHolderInitializer = new TokenHolderInitializer {
+    override def initializeTokenHolder(accessToken: AccessToken,
+                                       tokenGuardian: ActorRef)(
+      implicit context: ActorContext,
+      authenticationHandler: AuthenticationHandler
+    ): ActorRef =
+      context.system.actorOf(TokenHolder.props(accessToken, tokenGuardian))
+  }
+}

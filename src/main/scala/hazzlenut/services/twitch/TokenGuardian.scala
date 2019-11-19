@@ -1,30 +1,40 @@
 package hazzlenut.services.twitch
 
-import akka.actor.{Actor, ActorRef, PoisonPill, Props}
+import akka.actor.{Actor, ActorContext, ActorRef, PoisonPill, Props}
+import cats.Monad
 import hazzlenut.errors.HazzlenutError
-import hazzlenut.handler.AuthenticationHandler
+import hazzlenut.handler.{AuthenticationHandler, TwitchClientHandler}
 import hazzlenut.services.twitch.TokenGuardian.{ApplicationStarted, Authenticated, CantRenewToken}
+import hazzlenut.util.{HttpClient, LogProvider}
+import log.effect.LogWriter
 
 object TokenGuardian {
   case object CantRenewToken
   case class Authenticated(accessToken: AccessToken)
   case object ApplicationStarted
 
-  def props(implicit authenticationHandler: AuthenticationHandler,
-            tokenHolderInitializer: TokenHolderInitializer) =
+  def props[F[_]: UserInfoInitializer: TwitchClientHandler: TwitchClient: HttpClient: LogProvider: Monad](
+    implicit authenticationHandler: AuthenticationHandler,
+    tokenHolderInitializer: TokenHolderInitializer,
+  ) =
     Props(new TokenGuardian())
 }
 
-class TokenGuardian(implicit authenticationHandler: AuthenticationHandler,
-                    tokenHolderInitializer: TokenHolderInitializer)
-    extends Actor {
+class TokenGuardian[F[_]: TwitchClientHandler: TwitchClient: HttpClient: LogProvider](
+  implicit authenticationHandler: AuthenticationHandler,
+  tokenHolderInitializer: TokenHolderInitializer,
+  userInfoInitializer: UserInfoInitializer[F],
+  monad: Monad[F]
+) extends Actor {
 
-  def workingNormally(tokenHolder: ActorRef): Receive = {
+  def workingNormally(tokenHolder: ActorRef, userInfo: ActorRef): Receive = {
     case CantRenewToken =>
       authenticateUserAgainAndWaitForResult()
 
       // Kill TokenHolder
       tokenHolder ! PoisonPill
+      // Kill UserInfo
+      userInfo ! PoisonPill
 
     case msg @ (TokenHolder.TokenExpiredNeedNew | TokenHolder.AskAccessToken) =>
       tokenHolder forward msg
@@ -40,7 +50,8 @@ class TokenGuardian(implicit authenticationHandler: AuthenticationHandler,
       queuedMessages.foreach {
         case (sender, msg) => tokenHolder.tell(msg, sender)
       }
-      context.become(workingNormally(tokenHolder))
+      val userInfo = userInfoInitializer.initializeUserInfo(tokenHolder)
+      context.become(workingNormally(tokenHolder, userInfo))
 
     case msg @ TokenHolder.AskAccessToken =>
       context.become(
