@@ -1,6 +1,6 @@
 Work list:
-- Clean and reorganize the services.twitch namespace
-- Think of a way to enforce cursor and total on sequence requests (TwitchClient)
+- Think of a way to enforce the return cursor and total on sequence requests replies (TwitchClient)
+    Refactor to have baseReq, ReqForSeq(dummy that has validation and calls baseReq) and ReqForSingle (Same)
 - Understand why the TwitchReply RootJsonFormat isn't being correctly imported implicitly 
 (without importing in the context of the method it says that if finds an ambiguous method to apply)
     - Implement tests to assure that the serialization and deserializion of the hand rolled json formating works
