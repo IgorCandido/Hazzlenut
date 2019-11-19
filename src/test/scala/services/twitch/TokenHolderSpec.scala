@@ -3,9 +3,9 @@ package services.twitch
 import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestKit, TestProbe}
 import cats.implicits._
-import hazzlenut.services.twitch.AccessToken
 import hazzlenut.services.twitch.actor.TokenHolder
 import hazzlenut.services.twitch.actor.TokenHolder.{AskAccessToken, ReplyAccessToken, TokenExpiredNeedNew}
+import hazzlenut.services.twitch.adapters.AccessToken
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
 
 import scala.concurrent.Future

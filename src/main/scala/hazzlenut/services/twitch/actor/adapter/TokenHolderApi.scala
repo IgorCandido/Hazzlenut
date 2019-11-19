@@ -1,11 +1,8 @@
-package hazzlenut.services.twitch
+package hazzlenut.services.twitch.actor.adapter
 
 import akka.actor.Actor.Receive
 import akka.actor.{ActorContext, ActorRef}
-import hazzlenut.services.twitch.actor.TokenHolder.{
-  AskAccessToken,
-  TokenExpiredNeedNew
-}
+import hazzlenut.services.twitch.actor.TokenHolder.{AskAccessToken, TokenExpiredNeedNew}
 
 final case object TokenHolderApi {
 

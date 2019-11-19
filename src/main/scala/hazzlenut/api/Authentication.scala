@@ -9,13 +9,10 @@ import akka.util.Timeout
 import hazzlenut.errors.HazzlenutError
 import hazzlenut.handler.TwitchClientHandler.dsl._
 import hazzlenut.handler.{AuthenticationHandler, TwitchClientHandler}
-import hazzlenut.services.twitch.TwitchClient
 import hazzlenut.services.twitch.actor.TokenGuardian.Authenticated
-import hazzlenut.services.twitch.actor.TokenHolder.{
-  AskAccessToken,
-  ReplyAccessToken
-}
+import hazzlenut.services.twitch.actor.TokenHolder.{AskAccessToken, ReplyAccessToken}
 import hazzlenut.services.twitch.actor.UserInfo.{ProvideUser, RetrieveUser}
+import hazzlenut.services.twitch.actor.adapter.TwitchClient
 import hazzlenut.util.{HttpClient, UnmarshallerEntiy}
 import zio.ZIO
 

@@ -4,8 +4,8 @@ import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.testkit.TestProbe
 import cats.implicits._
 import hazzlenut.api.Authentication
-import hazzlenut.services.twitch.AccessToken
 import hazzlenut.services.twitch.actor.TokenGuardian.Authenticated
+import hazzlenut.services.twitch.adapters.AccessToken
 import hazzlenut.util.HttpClient
 import org.scalatest.{Matchers, WordSpecLike}
 import utils.TestIO

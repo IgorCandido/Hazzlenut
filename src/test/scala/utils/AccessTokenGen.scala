@@ -1,6 +1,6 @@
 package utils
 
-import hazzlenut.services.twitch.AccessToken
+import hazzlenut.services.twitch.adapters.AccessToken
 import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.Gen
 

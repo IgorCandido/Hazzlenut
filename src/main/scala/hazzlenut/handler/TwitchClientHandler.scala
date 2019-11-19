@@ -3,12 +3,14 @@ package hazzlenut.handler
 import akka.actor.ActorSystem
 import akka.stream.Materializer
 import hazzlenut.errors.HazzlenutError
-import hazzlenut.services.twitch.{AccessToken, CommonReferences, TwitchClient}
 import hazzlenut.services.twitch.model.{Follow, TwitchSeqWithMeta, User}
 import hazzlenut.util.HttpClient
 import zio.ZIO
 import zio.interop.catz._
 import cats.implicits._
+import hazzlenut.services.twitch.actor.adapter.TwitchClient
+import hazzlenut.services.twitch.adapters.AccessToken
+import hazzlenut.services.twitch.helper.CommonReferences
 
 import scala.concurrent.Future
 

@@ -1,8 +1,9 @@
-package hazzlenut.services.twitch
+package hazzlenut.services.twitch.actor.helper
 
 import akka.actor.{ActorContext, ActorRef}
 import hazzlenut.handler.AuthenticationHandler
 import hazzlenut.services.twitch.actor.TokenHolder
+import hazzlenut.services.twitch.adapters.AccessToken
 
 trait TokenHolderInitializer {
   def initializeTokenHolder(accessToken: AccessToken, self: ActorRef)(

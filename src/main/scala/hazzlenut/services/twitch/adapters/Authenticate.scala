@@ -1,4 +1,4 @@
-package hazzlenut.services.twitch
+package hazzlenut.services.twitch.adapters
 
 import akka.actor.ActorSystem
 import akka.stream.Materializer
@@ -48,7 +48,8 @@ object Authenticate {
       } yield accessToken
   }
 
-  def reAuthenticate[F[_]: Reauthentication]: F[Either[HazzlenutError,Unit]] ={
+  def reAuthenticate[F[_]: Reauthentication]
+    : F[Either[HazzlenutError, Unit]] = {
     import Reauthentication.dsl._
 
     reauthenticateWithUser()

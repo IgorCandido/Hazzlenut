@@ -1,4 +1,4 @@
-package hazzlenut.services.twitch
+package hazzlenut.services.twitch.actor.adapter
 
 import akka.http.scaladsl.model.headers.OAuth2BearerToken
 import akka.http.scaladsl.model.{
@@ -18,15 +18,11 @@ import hazzlenut.errors.HazzlenutError.{
   UnableToFetchFollowers,
   UnableToFetchUserInformation
 }
-import hazzlenut.services.twitch.model.{
-  Follow,
-  Pagination,
-  TwitchError,
-  TwitchReply,
-  TwitchSeqWithMeta,
-  User
-}
-import hazzlenut.util.UnmarshallerEntiy
+import hazzlenut.services.twitch.adapters.AccessToken
+import hazzlenut.services.twitch.helper.CommonReferences
+import hazzlenut.services.twitch.helper.CommonReferences.extractors._
+import hazzlenut.services.twitch.model._
+import hazzlenut.util.{HttpClient, UnmarshallerEntiy}
 import zio.ZIO
 
 trait TwitchClient[F[_]] {
@@ -80,20 +76,20 @@ trait TwitchClient[F[_]] {
     unmarshaller: Unmarshaller[ResponseEntity, TwitchReply[Out]],
     monadErrorThrowable: MonadError[F, HazzlenutError]
   ): F[TwitchSeqWithMeta[Out]] = {
-    import commonReferences._
     (for {
-      httpResult <- httpClient.request(
+      httpResult <- HttpClient[F].request(
         HttpRequest(uri = url)
           .addCredentials(OAuth2BearerToken(accessToken.accessToken)),
         extractErrorfromTwitchError
       )
-      outMaybe <- unmarshallerEntiy
+      outMaybe <- UnmarshallerEntiy[F]
         .unmarshal[ResponseEntity, TwitchReply[Out]](httpResult.entity)
       out <- fromOption[Seq[Out]](
         outMaybe.data.map(_.toSeq).filter(_.nonEmpty),
         hazzlenutError
       )
-    } yield TwitchSeqWithMeta(out, outMaybe.pagination, outMaybe.total)).recoverWith {
+    } yield
+      TwitchSeqWithMeta(out, outMaybe.pagination, outMaybe.total)).recoverWith {
       handleUnAuthorized
     }
   }

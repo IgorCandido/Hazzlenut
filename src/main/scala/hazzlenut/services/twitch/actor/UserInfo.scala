@@ -12,7 +12,7 @@ import hazzlenut.services.twitch.actor.TokenGuardian.ApplicationStarted
 import hazzlenut.services.twitch.actor.TokenHolder.ReplyAccessToken
 import hazzlenut.services.twitch.actor.UserInfo.{ProvideUser, RetrieveUser}
 import hazzlenut.services.twitch.model.User
-import hazzlenut.services.twitch.{TokenHolderApi, TwitchClient}
+import hazzlenut.services.twitch.actor.adapter.{TokenHolderApi, TwitchClient}
 import hazzlenut.util.ShowUtils._
 import hazzlenut.util.{HttpClient, LogProvider, UnmarshallerEntiy}
 import log.effect.LogLevels.Debug

@@ -3,7 +3,7 @@ package hazzlenut.handler
 import akka.actor.ActorSystem
 import akka.stream.Materializer
 import hazzlenut.errors.HazzlenutError
-import hazzlenut.services.twitch.{AccessToken, Authenticate}
+import hazzlenut.services.twitch.adapters.{AccessToken, Authenticate}
 import zio.ZIO
 import zio.interop.catz._
 

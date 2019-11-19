@@ -6,15 +6,11 @@ import cats.implicits._
 import cats.{Id, Monad}
 import hazzlenut.errors.HazzlenutError.{UnableToAuthenticate, UnableToConnect}
 import hazzlenut.handler.TwitchClientHandler
-import hazzlenut.services.twitch.TwitchClient
 import hazzlenut.services.twitch.actor.TokenGuardian.ApplicationStarted
-import hazzlenut.services.twitch.actor.TokenHolder.{
-  AskAccessToken,
-  ReplyAccessToken,
-  TokenExpiredNeedNew
-}
+import hazzlenut.services.twitch.actor.TokenHolder.{AskAccessToken, ReplyAccessToken, TokenExpiredNeedNew}
 import hazzlenut.services.twitch.actor.UserInfo
 import hazzlenut.services.twitch.actor.UserInfo.{ProvideUser, RetrieveUser}
+import hazzlenut.services.twitch.actor.adapter.TwitchClient
 import hazzlenut.services.twitch.model.User
 import hazzlenut.util.Semantic._
 import hazzlenut.util.{HttpClient, LogProvider, UnmarshallerEntiy}

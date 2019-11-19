@@ -1,4 +1,4 @@
-package hazzlenut.services.twitch
+package hazzlenut.services.twitch.adapters
 
 import hazzlenut.errors.HazzlenutError
 import hazzlenut.errors.HazzlenutError.ThrowableError

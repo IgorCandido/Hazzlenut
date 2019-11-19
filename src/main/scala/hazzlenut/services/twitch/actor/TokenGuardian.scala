@@ -4,17 +4,10 @@ import akka.actor.{Actor, ActorRef, PoisonPill, Props}
 import cats.Monad
 import hazzlenut.errors.HazzlenutError
 import hazzlenut.handler.{AuthenticationHandler, TwitchClientHandler}
-import hazzlenut.services.twitch.actor.TokenGuardian.{
-  ApplicationStarted,
-  Authenticated,
-  CantRenewToken
-}
-import hazzlenut.services.twitch.{
-  AccessToken,
-  TokenHolderInitializer,
-  TwitchClient,
-  UserInfoInitializer
-}
+import hazzlenut.services.twitch.actor.TokenGuardian.{ApplicationStarted, Authenticated, CantRenewToken}
+import hazzlenut.services.twitch.actor.adapter.TwitchClient
+import hazzlenut.services.twitch.adapters.AccessToken
+import hazzlenut.services.twitch.actor.helper.{TokenHolderInitializer, UserInfoInitializer}
 import hazzlenut.util.{HttpClient, LogProvider}
 
 object TokenGuardian {

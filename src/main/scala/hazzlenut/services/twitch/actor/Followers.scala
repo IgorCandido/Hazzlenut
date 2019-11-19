@@ -6,8 +6,9 @@ import akka.stream.ActorMaterializer
 import hazzlenut.services.twitch.actor.Followers._
 import hazzlenut.services.twitch.actor.TokenHolder.ReplyAccessToken
 import hazzlenut.services.twitch.actor.UserInfo.{ProvideUser, RetrieveUser}
+import hazzlenut.services.twitch.actor.adapter.TokenHolderApi
 import hazzlenut.services.twitch.model.User
-import hazzlenut.services.twitch.{AccessToken, TokenHolderApi}
+import hazzlenut.services.twitch.adapters.AccessToken
 
 import scala.concurrent.{ExecutionContext, Future}
 

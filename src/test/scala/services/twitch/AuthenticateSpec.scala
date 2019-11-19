@@ -4,7 +4,7 @@ import akka.actor.ActorSystem
 import akka.stream.{ActorMaterializer, Materializer}
 import cats.implicits._
 import hazzlenut.errors.HazzlenutError.ThrowableError
-import hazzlenut.services.twitch.{AccessToken, Authenticate}
+import hazzlenut.services.twitch.adapters.{AccessToken, Authenticate}
 import org.scalatest.{Matchers, WordSpec}
 import zio.DefaultRuntime
 import utils.TestIO

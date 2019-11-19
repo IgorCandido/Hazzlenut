@@ -1,4 +1,4 @@
-package hazzlenut.services.twitch
+package hazzlenut.services.twitch.adapters
 
 import java.net.URI
 
@@ -8,7 +8,7 @@ import akka.stream.Materializer
 import com.github.dakatsuka.akka.http.oauth2.client.{Client, GrantType, Config => DakaConfig}
 import hazzlenut.errors.HazzlenutError
 import hazzlenut.errors.HazzlenutError.ThrowableError
-import hazzlenut.services.twitch.Configuration.Config
+import hazzlenut.services.twitch.adapters.Configuration.Config
 import zio.ZIO
 
 import scala.concurrent.ExecutionContext

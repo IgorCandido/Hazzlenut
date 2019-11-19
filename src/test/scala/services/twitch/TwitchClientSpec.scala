@@ -6,7 +6,7 @@ import akka.stream.{ActorMaterializer, Materializer}
 import cats.implicits._
 import hazzlenut.errors.HazzlenutError
 import hazzlenut.errors.HazzlenutError._
-import hazzlenut.services.twitch.AccessToken
+import hazzlenut.services.twitch.adapters.AccessToken
 import hazzlenut.services.twitch.model.{TwitchReply, User}
 import hazzlenut.util.{HttpClient, UnmarshallerEntiy}
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpec}

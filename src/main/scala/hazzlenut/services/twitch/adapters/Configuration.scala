@@ -1,10 +1,10 @@
-package hazzlenut.services.twitch
+package hazzlenut.services.twitch.adapters
 
 import cats.Monad
 import cats.implicits._
 import hazzlenut.errors.HazzlenutError
 import hazzlenut.errors.HazzlenutError.{InvalidConfiguration, MonadErrorHazzlenut}
-import hazzlenut.services.twitch.Configuration.Config
+import hazzlenut.services.twitch.adapters.Configuration.Config
 import hazzlenut.util.MapGetterValidation.{ConfigurationValidation, _}
 import zio.ZIO
 

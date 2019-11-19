@@ -6,14 +6,14 @@ import akka.stream.Materializer
 import cats.implicits._
 import cats.{Id, Monad, MonadError}
 import hazzlenut.errors.HazzlenutError
-import hazzlenut.errors.HazzlenutError.{
-  ThrowableError,
-  UnableToConnect,
-  UnableToFetchUserInformation
-}
+import hazzlenut.errors.HazzlenutError.{ThrowableError, UnableToConnect, UnableToFetchUserInformation}
 import hazzlenut.handler.{AuthenticationHandler, TwitchClientHandler}
 import hazzlenut.services.twitch._
 import hazzlenut.services.twitch.actor.UserInfo
+import hazzlenut.services.twitch.actor.adapter.TwitchClient
+import hazzlenut.services.twitch.actor.helper.UserInfoInitializer
+import hazzlenut.services.twitch.adapters.{AccessToken, Configuration, OAuth}
+import hazzlenut.services.twitch.helper.CommonReferences
 import hazzlenut.services.twitch.model.{Follow, TwitchSeqWithMeta, User}
 import hazzlenut.util.MapGetterValidation.ConfigurationValidation
 import hazzlenut.util.{HttpClient, LogProvider, UnmarshallerEntiy}

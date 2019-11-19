@@ -2,16 +2,17 @@ package services.twitch
 
 import cats.implicits._
 import hazzlenut.errors.HazzlenutError.InvalidConfiguration
+import hazzlenut.services.twitch.adapters.Configuration.dsl._
 import hazzlenut.util.MapGetterValidation.FieldError
 import org.scalatest.{Matchers, WordSpec}
 import utils.TestIO
+import utils.TestIO.TestIOMonad
 
 class ConfigurationSpec extends WordSpec with Matchers {
 
   "Configuration" should {
     "Read successfully when all properties are provided" in {
-      import TestIO.TestIOMonad
-      import hazzlenut.services.twitch.Configuration.dsl._
+
       implicit val configurationProvider = TestIO.configurationTestIOWithValues(
         (
           "sad2532y54hh5uyuu5jh5j5".validNel,
@@ -44,8 +45,6 @@ class ConfigurationSpec extends WordSpec with Matchers {
     }
 
     "Read successfully when all properties are provided and multiple scopes" in {
-      import TestIO.TestIOMonad
-      import hazzlenut.services.twitch.Configuration.dsl._
       implicit val configurationProvider = TestIO.configurationTestIOWithValues(
         (
           "sad2532y54hh5uyuu5jh5j5".validNel,
@@ -80,8 +79,6 @@ class ConfigurationSpec extends WordSpec with Matchers {
     }
 
     "Read with one error when the property scopes is not available" in {
-      import TestIO.TestIOMonad
-      import hazzlenut.services.twitch.Configuration.dsl._
       implicit val configurationProvider = TestIO.configurationTestIOWithValues(
         (
           "sad2532y54hh5uyuu5jh5j5".validNel,
@@ -109,8 +106,6 @@ class ConfigurationSpec extends WordSpec with Matchers {
     }
 
     "Read with one error when the properties scopes and siteUrl are not available" in {
-      import TestIO.TestIOMonad
-      import hazzlenut.services.twitch.Configuration.dsl._
       implicit val configurationProvider = TestIO.configurationTestIOWithValues(
         (
           "sad2532y54hh5uyuu5jh5j5".validNel,
