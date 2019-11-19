@@ -1,20 +1,24 @@
 package utils
 import akka.actor.{ActorContext, ActorRef, ActorSystem}
-import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpRequest, HttpResponse, StatusCode, StatusCodes}
+import akka.http.scaladsl.model._
 import akka.http.scaladsl.unmarshalling.{Unmarshal, Unmarshaller}
 import akka.stream.Materializer
 import cats.implicits._
 import cats.{Id, Monad, MonadError}
 import hazzlenut.errors.HazzlenutError
-import hazzlenut.errors.HazzlenutError.{ThrowableError, UnableToConnect, UnableToFetchUserInformation}
+import hazzlenut.errors.HazzlenutError.{
+  ThrowableError,
+  UnableToConnect,
+  UnableToFetchUserInformation
+}
 import hazzlenut.handler.{AuthenticationHandler, TwitchClientHandler}
+import hazzlenut.services.twitch._
+import hazzlenut.services.twitch.actor.UserInfo
 import hazzlenut.services.twitch.model.{Follow, TwitchSeqWithMeta, User}
-import hazzlenut.services.twitch.{AccessToken, CommonReferences, Configuration, OAuth, TwitchClient, UserInfo, UserInfoInitializer}
 import hazzlenut.util.MapGetterValidation.ConfigurationValidation
 import hazzlenut.util.{HttpClient, LogProvider, UnmarshallerEntiy}
-import log.effect.{LogLevel, LogWriter, LogWriterConstructor, internal}
 import log.effect.internal.{EffectSuspension, Show}
-import utils.TestIO.httpClientTestIO
+import log.effect.{LogLevel, LogWriter, LogWriterConstructor, internal}
 import org.{log4s => l4s}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -328,8 +332,7 @@ trait TestIOTwitchClient {
     override def user(accessToken: AccessToken)(
       implicit commonReferences: CommonReferences[TestIO],
       monadError: MonadError[TestIO, HazzlenutError]
-    ): TestIO[User] =
-    {
+    ): TestIO[User] = {
       import hazzlenut.services.twitch.model.TwitchReply._
       doRequest[User](
         "http://testUser",
@@ -338,12 +341,12 @@ trait TestIOTwitchClient {
       )
     }
 
-    override def followers(
-      accessToken: AccessToken,
-      userId: String,
-      cursor: Option[String]
-    )(implicit commonReferences: CommonReferences[TestIO],
-      monadError: MonadError[TestIO, HazzlenutError]): TestIO[TwitchSeqWithMeta[Follow]] = {
+    override def followers(accessToken: AccessToken,
+                           userId: String,
+                           cursor: Option[String])(
+      implicit commonReferences: CommonReferences[TestIO],
+      monadError: MonadError[TestIO, HazzlenutError]
+    ): TestIO[TwitchSeqWithMeta[Follow]] = {
       import hazzlenut.services.twitch.model.TwitchReply._
       doRequestSeq[Follow](
         "http://testUsers",

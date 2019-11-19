@@ -1,14 +1,15 @@
-package hazzlenut.services.twitch
+package hazzlenut.services.twitch.actor
 
 import akka.actor.{Actor, ActorRef, Props, Status}
-import hazzlenut.services.twitch.Followers.{Follower, PollFollowers, ProvideFollowers, ResultPollFollowers, RetrieveFollowers}
-import hazzlenut.services.twitch.TokenHolder.ReplyAccessToken
-import hazzlenut.services.twitch.UserInfo.{ProvideUser, RetrieveUser}
-import hazzlenut.services.twitch.model.User
-
-import scala.concurrent.{ExecutionContext, Future}
 import akka.pattern.pipe
 import akka.stream.ActorMaterializer
+import hazzlenut.services.twitch.actor.Followers._
+import hazzlenut.services.twitch.actor.TokenHolder.ReplyAccessToken
+import hazzlenut.services.twitch.actor.UserInfo.{ProvideUser, RetrieveUser}
+import hazzlenut.services.twitch.model.User
+import hazzlenut.services.twitch.{AccessToken, TokenHolderApi}
+
+import scala.concurrent.{ExecutionContext, Future}
 
 object Followers {
   def props(tokenHolder: ActorRef, userInfo: ActorRef): Props =

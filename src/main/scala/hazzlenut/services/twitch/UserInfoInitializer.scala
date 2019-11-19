@@ -4,6 +4,7 @@ import akka.actor.{ActorContext, ActorRef}
 import cats.Monad
 import hazzlenut.HazzleNutZIO
 import hazzlenut.handler.TwitchClientHandler
+import hazzlenut.services.twitch.actor.UserInfo
 import hazzlenut.util.{HttpClient, LogProvider}
 
 object UserInfoInitializer {

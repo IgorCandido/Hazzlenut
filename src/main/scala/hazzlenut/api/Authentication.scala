@@ -7,12 +7,15 @@ import akka.http.scaladsl.server.Route
 import akka.pattern.ask
 import akka.util.Timeout
 import hazzlenut.errors.HazzlenutError
-import hazzlenut.handler.{AuthenticationHandler, TwitchClientHandler}
 import hazzlenut.handler.TwitchClientHandler.dsl._
-import hazzlenut.services.twitch.TokenGuardian.Authenticated
-import hazzlenut.services.twitch.TokenHolder.{AskAccessToken, ReplyAccessToken}
-import hazzlenut.services.twitch.{CommonReferences, TwitchClient}
-import hazzlenut.services.twitch.UserInfo.{ProvideUser, RetrieveUser}
+import hazzlenut.handler.{AuthenticationHandler, TwitchClientHandler}
+import hazzlenut.services.twitch.TwitchClient
+import hazzlenut.services.twitch.actor.TokenGuardian.Authenticated
+import hazzlenut.services.twitch.actor.TokenHolder.{
+  AskAccessToken,
+  ReplyAccessToken
+}
+import hazzlenut.services.twitch.actor.UserInfo.{ProvideUser, RetrieveUser}
 import hazzlenut.util.{HttpClient, UnmarshallerEntiy}
 import zio.ZIO
 
@@ -20,8 +23,9 @@ import scala.concurrent.duration._
 
 object Authentication {
 
-  def publicRoute(tokenGuardian: ActorRef,
-                  userInfo: ActorRef)(implicit actorSystem: ActorSystem): Route = {
+  def publicRoute(tokenGuardian: ActorRef, userInfo: ActorRef)(
+    implicit actorSystem: ActorSystem
+  ): Route = {
     route[ZIO[Any, HazzlenutError, ?]](tokenGuardian, userInfo)
   }
 
@@ -112,7 +116,11 @@ object Authentication {
                       .mapTo[ReplyAccessToken]
                     user <- (userInfo ? RetrieveUser)
                       .mapTo[ProvideUser]
-                    followers <- retrieveFollowers(token.accessToken, user.user.id, None)
+                    followers <- retrieveFollowers(
+                      token.accessToken,
+                      user.user.id,
+                      None
+                    )
                   } yield followers) { f =>
                     complete(s"followers ${f}")
                   }

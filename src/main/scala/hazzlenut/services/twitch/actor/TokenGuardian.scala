@@ -1,12 +1,21 @@
-package hazzlenut.services.twitch
+package hazzlenut.services.twitch.actor
 
-import akka.actor.{Actor, ActorContext, ActorRef, PoisonPill, Props}
+import akka.actor.{Actor, ActorRef, PoisonPill, Props}
 import cats.Monad
 import hazzlenut.errors.HazzlenutError
 import hazzlenut.handler.{AuthenticationHandler, TwitchClientHandler}
-import hazzlenut.services.twitch.TokenGuardian.{ApplicationStarted, Authenticated, CantRenewToken}
+import hazzlenut.services.twitch.actor.TokenGuardian.{
+  ApplicationStarted,
+  Authenticated,
+  CantRenewToken
+}
+import hazzlenut.services.twitch.{
+  AccessToken,
+  TokenHolderInitializer,
+  TwitchClient,
+  UserInfoInitializer
+}
 import hazzlenut.util.{HttpClient, LogProvider}
-import log.effect.LogWriter
 
 object TokenGuardian {
   case object CantRenewToken

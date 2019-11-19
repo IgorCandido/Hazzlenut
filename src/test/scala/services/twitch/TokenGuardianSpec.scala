@@ -5,9 +5,13 @@ import akka.testkit.{TestKit, TestProbe}
 import cats.Monad
 import cats.implicits._
 import hazzlenut.handler.{AuthenticationHandler, TwitchClientHandler}
-import hazzlenut.services.twitch.TokenGuardian.{ApplicationStarted, Authenticated}
-import hazzlenut.services.twitch.TokenHolder.AskAccessToken
 import hazzlenut.services.twitch._
+import hazzlenut.services.twitch.actor.TokenGuardian.{
+  ApplicationStarted,
+  Authenticated
+}
+import hazzlenut.services.twitch.actor.TokenHolder.AskAccessToken
+import hazzlenut.services.twitch.actor.{TokenGuardian, TokenHolder}
 import hazzlenut.util.{HttpClient, LogProvider}
 import org.scalatest.{AsyncWordSpecLike, Matchers}
 import utils.{AccessTokenGen, TestIO}

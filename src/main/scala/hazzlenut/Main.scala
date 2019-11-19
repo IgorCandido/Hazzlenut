@@ -5,8 +5,8 @@ import akka.stream.ActorMaterializer
 import hazzlenut.akkaServer.Server
 import hazzlenut.akkaServer.Server.Configuration
 import hazzlenut.api.Authentication
-import hazzlenut.services.twitch.{TokenGuardian, UserInfo}
-import hazzlenut.services.twitch.TokenGuardian.ApplicationStarted
+import hazzlenut.services.twitch.actor.TokenGuardian.ApplicationStarted
+import hazzlenut.services.twitch.actor.{TokenGuardian, UserInfo}
 import zio.interop.catz._
 
 object Main extends App {

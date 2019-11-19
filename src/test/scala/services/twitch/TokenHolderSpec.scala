@@ -2,13 +2,14 @@ package services.twitch
 
 import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestKit, TestProbe}
-import hazzlenut.services.twitch.{AccessToken, TokenHolder}
-import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
 import cats.implicits._
-import hazzlenut.services.twitch.TokenHolder.{AskAccessToken, ReplyAccessToken, TokenExpiredNeedNew}
+import hazzlenut.services.twitch.AccessToken
+import hazzlenut.services.twitch.actor.TokenHolder
+import hazzlenut.services.twitch.actor.TokenHolder.{AskAccessToken, ReplyAccessToken, TokenExpiredNeedNew}
+import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
 
-import scala.concurrent.duration._
 import scala.concurrent.Future
+import scala.concurrent.duration._
 
 class TokenHolderSpec
     extends TestKit(ActorSystem("TokenHolderSpec"))
@@ -34,7 +35,8 @@ class TokenHolderSpec
 
       val tokenGuardian = TestProbe()
 
-      val tokenHolder = system.actorOf(TokenHolder.props(accessToken, tokenGuardian.ref))
+      val tokenHolder =
+        system.actorOf(TokenHolder.props(accessToken, tokenGuardian.ref))
 
       tokenHolder ! AskAccessToken
       val reply = expectMsgType[ReplyAccessToken]

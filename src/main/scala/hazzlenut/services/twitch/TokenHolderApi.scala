@@ -2,7 +2,7 @@ package hazzlenut.services.twitch
 
 import akka.actor.Actor.Receive
 import akka.actor.{ActorContext, ActorRef}
-import hazzlenut.services.twitch.TokenHolder.{
+import hazzlenut.services.twitch.actor.TokenHolder.{
   AskAccessToken,
   TokenExpiredNeedNew
 }

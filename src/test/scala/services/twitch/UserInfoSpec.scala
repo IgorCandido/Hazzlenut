@@ -2,22 +2,27 @@ package services.twitch
 
 import akka.actor.{ActorRef, ActorSystem}
 import akka.testkit.{ImplicitSender, TestKit, TestProbe}
-import cats.{Id, Monad}
 import cats.implicits._
+import cats.{Id, Monad}
 import hazzlenut.errors.HazzlenutError.{UnableToAuthenticate, UnableToConnect}
 import hazzlenut.handler.TwitchClientHandler
-import hazzlenut.services.twitch.TokenGuardian.ApplicationStarted
-import hazzlenut.services.twitch.TokenHolder.{AskAccessToken, ReplyAccessToken, TokenExpiredNeedNew}
-import hazzlenut.services.twitch.{TwitchClient, UserInfo}
-import hazzlenut.services.twitch.UserInfo.{ProvideUser, RetrieveUser}
+import hazzlenut.services.twitch.TwitchClient
+import hazzlenut.services.twitch.actor.TokenGuardian.ApplicationStarted
+import hazzlenut.services.twitch.actor.TokenHolder.{
+  AskAccessToken,
+  ReplyAccessToken,
+  TokenExpiredNeedNew
+}
+import hazzlenut.services.twitch.actor.UserInfo
+import hazzlenut.services.twitch.actor.UserInfo.{ProvideUser, RetrieveUser}
 import hazzlenut.services.twitch.model.User
+import hazzlenut.util.Semantic._
 import hazzlenut.util.{HttpClient, LogProvider, UnmarshallerEntiy}
 import log.effect.LogLevel
 import log.effect.LogLevels.Debug
 import org.scalatest.{AsyncWordSpecLike, BeforeAndAfterAll, Matchers}
 import utils.TestIO._
 import utils.{AccessTokenGen, TestIO, UserGen}
-import hazzlenut.util.Semantic._
 
 import scala.concurrent.duration._
 
@@ -137,13 +142,13 @@ class UserInfoSpec
         createLogProvider(applyOnLogging)
 
       val userInfo = createUserInfoAndStart(probe.ref)(
-          implicitly[TwitchClientHandler[TestIO]],
-          implicitly[TwitchClient[TestIO]],
-          implicitly[HttpClient[TestIO]],
-          providerLog,
-          implicitly[Monad[TestIO]],
-          implicitly[UnmarshallerEntiy[TestIO]]
-        )
+        implicitly[TwitchClientHandler[TestIO]],
+        implicitly[TwitchClient[TestIO]],
+        implicitly[HttpClient[TestIO]],
+        providerLog,
+        implicitly[Monad[TestIO]],
+        implicitly[UnmarshallerEntiy[TestIO]]
+      )
 
       probe.expectMsg(AskAccessToken)
 

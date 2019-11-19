@@ -1,11 +1,12 @@
-package hazzlenut.services.twitch
+package hazzlenut.services.twitch.actor
 
 import akka.actor.{Actor, ActorRef, Props}
 import akka.pattern.pipe
 import akka.stream.ActorMaterializer
 import hazzlenut.errors.HazzlenutError
 import hazzlenut.handler.AuthenticationHandler
-import hazzlenut.services.twitch.TokenGuardian.CantRenewToken
+import hazzlenut.services.twitch.AccessToken
+import hazzlenut.services.twitch.actor.TokenGuardian.CantRenewToken
 
 object TokenHolder {
   def props(accessToken: AccessToken, tokenGuardian: ActorRef)(
