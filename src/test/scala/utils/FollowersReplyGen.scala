@@ -3,7 +3,6 @@ package utils
 import hazzlenut.services.twitch.model.{Follow, Pagination, TwitchSeqWithMeta}
 import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.Gen
-import cats.implicits._
 
 object FollowersReplyGen {
   def apply(): Gen[TwitchSeqWithMeta[Follow]] = Gen.sized { size =>
@@ -13,13 +12,18 @@ object FollowersReplyGen {
       to_id <- arbitrary[String]
       to_name <- arbitrary[String]
       followed_at <- arbitrary[String]
-    } yield Follow(from_id, from_name, to_id,to_name, followed_at)).flatMap(
-      Gen.listOfN(size, _)
-    ).flatMap{ follows =>
-      for{
-        cursor <- arbitrary[String]
-      } yield TwitchSeqWithMeta[Follow](follows, Pagination(cursor).some, (follows.length: Long).some)
-    }
+    } yield Follow(from_id, from_name, to_id, to_name, followed_at))
+      .flatMap(Gen.listOfN(size, _))
+      .flatMap { follows =>
+        for {
+          cursor <- arbitrary[String]
+        } yield
+          TwitchSeqWithMeta[Follow](
+            follows,
+            Pagination(cursor),
+            (follows.length: Long)
+          )
+      }
   }
 
   def getSample(): TwitchSeqWithMeta[Follow] = apply().sample.get

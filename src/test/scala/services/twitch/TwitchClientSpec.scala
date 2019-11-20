@@ -3,13 +3,16 @@ package services.twitch
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.{HttpResponse, StatusCodes}
 import akka.stream.{ActorMaterializer, Materializer}
+import cats.MonadError
 import cats.implicits._
 import hazzlenut.errors.HazzlenutError
-import hazzlenut.errors.HazzlenutError._
+import hazzlenut.errors.HazzlenutError.{UnableToFetchFollowers, _}
+import hazzlenut.services.twitch.actor.adapter.TwitchClient
 import hazzlenut.services.twitch.adapters.AccessToken
-import hazzlenut.services.twitch.model.{TwitchReply, User}
+import hazzlenut.services.twitch.helper.CommonReferences
+import hazzlenut.services.twitch.model.{Follow, TwitchReply, TwitchSeqWithMeta, User}
 import hazzlenut.util.{HttpClient, UnmarshallerEntiy}
-import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpec}
+import org.scalatest.{Assertion, BeforeAndAfterAll, Matchers, WordSpec}
 import utils.TestIO
 
 import scala.concurrent.ExecutionContext
@@ -41,7 +44,7 @@ class TwitchClientSpec extends WordSpec with Matchers with BeforeAndAfterAll {
       |}""".stripMargin
 
   val defaultFollowersReply =
-  """{
+    """{
       |   "total": 12345,
       |   "data":
       |   [
@@ -66,7 +69,55 @@ class TwitchClientSpec extends WordSpec with Matchers with BeforeAndAfterAll {
       |}
       |""".stripMargin
 
-  "TwitchClient" should {
+  val defaultFollowersReplyWithoutTotal =
+    """{
+      |   "data":
+      |   [
+      |      {
+      |         "from_id": "171003792",
+      |         "from_name": "IIIsutha067III",
+      |         "to_id": "23161357",
+      |         "to_name": "LIRIK",
+      |         "followed_at": "2017-08-22T22:55:24Z"
+      |      },
+      |      {
+      |         "from_id": "113627897",
+      |         "from_name": "Birdman616",
+      |         "to_id": "23161357",
+      |         "to_name": "LIRIK",
+      |         "followed_at": "2017-08-22T22:55:04Z"
+      |      }
+      |   ],
+      |   "pagination":{
+      |     "cursor": "eyJiIjpudWxsLCJhIjoiMTUwMzQ0MTc3NjQyNDQyMjAwMCJ9"
+      |   }
+      |}
+      |""".stripMargin
+
+  val defaultFollowersReplyNoPagination =
+    """{
+      |   "total": 12345,
+      |   "data":
+      |   [
+      |      {
+      |         "from_id": "171003792",
+      |         "from_name": "IIIsutha067III",
+      |         "to_id": "23161357",
+      |         "to_name": "LIRIK",
+      |         "followed_at": "2017-08-22T22:55:24Z"
+      |      },
+      |      {
+      |         "from_id": "113627897",
+      |         "from_name": "Birdman616",
+      |         "to_id": "23161357",
+      |         "to_name": "LIRIK",
+      |         "followed_at": "2017-08-22T22:55:04Z"
+      |      }
+      |   ]
+      |}
+      |""".stripMargin
+
+  "TwitchClient Get Followers" should {
     "get user when access token provided" in {
       implicit val httpClient = TestIO.httpClientSucess(defaultUserReply)
 
@@ -92,22 +143,54 @@ class TwitchClientSpec extends WordSpec with Matchers with BeforeAndAfterAll {
         }
       )
     }
+  }
 
-    "get followers when access token provided" in {
-      implicit val httpClient = TestIO.httpClientSucess(defaultFollowersReply)
+  "TwitchClient Get Followers" should {
+    final case class TwitchGetFollowers(
+      testName: String,
+      reply: String,
+      error: Throwable => Assertion,
+      success: TwitchSeqWithMeta[Follow] => Assertion
+    )
 
-      val client = TestIO.twitchClient
-      val reply = client.followers(accessToken, "123", None)
-      val followersOrError = reply.result
-
-      followersOrError.fold(
+    List(
+      TwitchGetFollowers(
+        "get followers when access token provided",
+        defaultFollowersReply,
         error => fail("failed to retrieve user", error),
         followers => {
           followers.seq should have length 2
         }
+      ),
+      TwitchGetFollowers(
+        "get followers not returning paging",
+        defaultFollowersReplyNoPagination,
+        throwable => throwable shouldBe a [UnableToFetchFollowers.type],
+        _ => fail("Should have failed to get followers without pagination information")
+      ),
+      TwitchGetFollowers(
+        "get followers not returning total",
+        defaultFollowersReplyWithoutTotal,
+        throwable => throwable shouldBe a [UnableToFetchFollowers.type],
+        _ => fail("Should have failed to get followers without pagination information")
       )
-    }
+    ).foreach { twitchFollowersTestCase =>
+      twitchFollowersTestCase.testName in {
+        implicit val httpClient = TestIO.httpClientSucess(twitchFollowersTestCase.reply)
 
+        val client = TestIO.twitchClient
+        val reply = client.followers(accessToken, "123", None)
+        val followersOrError = reply.result
+
+        followersOrError.fold(
+          twitchFollowersTestCase.error,
+          twitchFollowersTestCase.success
+        )
+      }
+    }
+  }
+
+  "TwitchClient when used by other compomenets" should {
     "get user with error on http connection" in {
       val throwable = new Exception("There an error")
 

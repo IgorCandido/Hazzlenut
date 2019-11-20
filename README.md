@@ -1,6 +1,4 @@
 Work list:
-- Think of a way to enforce the return cursor and total on sequence requests replies (TwitchClient)
-    Refactor to have baseReq, ReqForSeq(dummy that has validation and calls baseReq) and ReqForSingle (Same)
 - Understand why the TwitchReply RootJsonFormat isn't being correctly imported implicitly 
 (without importing in the context of the method it says that if finds an ambiguous method to apply)
     - Implement tests to assure that the serialization and deserializion of the hand rolled json formating works
@@ -17,6 +15,8 @@ Work list:
     - Returning FollowersReply, implement lense for Users following
     - Implement a test/http action that allows to see our followers as manual test
     - When Token can't be renewed should die and be resurected when token starts again
+- Organize the tests on TwitchClientSpec - Remove tests that are not test the twitchClient but the usage of it into
+    into their respect specs (component being tested)
 - Understand if we need to drop user info when the we get new OAuthToken (not refresh but re-authenticate)
 - Write the flow for get followers on a cycle and then publish those to whoever is interested (Events and likely actor on a schedule)
 - Refactor twitch get followers (web sockets)

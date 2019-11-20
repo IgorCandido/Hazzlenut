@@ -6,7 +6,7 @@ import akka.stream.Materializer
 import cats.implicits._
 import cats.{Id, Monad, MonadError}
 import hazzlenut.errors.HazzlenutError
-import hazzlenut.errors.HazzlenutError.{ThrowableError, UnableToConnect, UnableToFetchUserInformation}
+import hazzlenut.errors.HazzlenutError.{ThrowableError, UnableToConnect, UnableToFetchFollowers, UnableToFetchUserInformation}
 import hazzlenut.handler.{AuthenticationHandler, TwitchClientHandler}
 import hazzlenut.services.twitch._
 import hazzlenut.services.twitch.actor.UserInfo
@@ -351,7 +351,7 @@ trait TestIOTwitchClient {
       doRequestSeq[Follow](
         "http://testUsers",
         accessToken,
-        UnableToFetchUserInformation
+        UnableToFetchFollowers
       )
     }
   }

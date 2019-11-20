@@ -46,7 +46,7 @@ trait TwitchClient[F[_]] {
 
   def handleUnAuthorized[Out](
     implicit monadError: MonadError[F, HazzlenutError]
-  ): PartialFunction[HazzlenutError, F[TwitchSeqWithMeta[Out]]] = {
+  ): PartialFunction[HazzlenutError, F[InternalRepresentationTwitchReply[Out]]] = {
     case HttpError(StatusCodes.Unauthorized.intValue, _) =>
       monadError.raiseError(UnableToAuthenticate)
   }
@@ -55,27 +55,13 @@ trait TwitchClient[F[_]] {
     implicit monadError: MonadError[F, HazzlenutError]
   ): F[Out]
 
-  protected def doRequest[Out](
-    url: String,
-    accessToken: AccessToken,
-    hazzlenutError: HazzlenutError
-  )(implicit commonReferences: CommonReferences[F],
-    unmarshaller: Unmarshaller[ResponseEntity, TwitchReply[Out]],
-    monadErrorThrowable: MonadError[F, HazzlenutError]): F[Out] = {
-    for {
-      httpResult <- doRequestSeq[Out](url, accessToken, hazzlenutError)
-      outMaybe = httpResult.seq.headOption
-      out <- fromOption(outMaybe, hazzlenutError)
-    } yield out
-  }
-
-  protected def doRequestSeq[Out](url: String,
-                                  accessToken: AccessToken,
-                                  hazzlenutError: HazzlenutError)(
-    implicit commonReferences: CommonReferences[F],
-    unmarshaller: Unmarshaller[ResponseEntity, TwitchReply[Out]],
-    monadErrorThrowable: MonadError[F, HazzlenutError]
-  ): F[TwitchSeqWithMeta[Out]] = {
+  protected def doRequestBase[Out](url: String,
+                                   accessToken: AccessToken,
+                                   hazzlenutError: HazzlenutError)(
+                                    implicit commonReferences: CommonReferences[F],
+                                    unmarshaller: Unmarshaller[ResponseEntity, TwitchReply[Out]],
+                                    monadErrorThrowable: MonadError[F, HazzlenutError]
+                                  ): F[InternalRepresentationTwitchReply[Out]] =
     (for {
       httpResult <- HttpClient[F].request(
         HttpRequest(uri = url)
@@ -89,10 +75,35 @@ trait TwitchClient[F[_]] {
         hazzlenutError
       )
     } yield
-      TwitchSeqWithMeta(out, outMaybe.pagination, outMaybe.total)).recoverWith {
+      InternalRepresentationTwitchReply(out, outMaybe.pagination, outMaybe.total)).recoverWith {
       handleUnAuthorized
     }
-  }
+
+  protected def doRequest[Out](
+    url: String,
+    accessToken: AccessToken,
+    hazzlenutError: HazzlenutError
+  )(implicit commonReferences: CommonReferences[F],
+    unmarshaller: Unmarshaller[ResponseEntity, TwitchReply[Out]],
+    monadErrorThrowable: MonadError[F, HazzlenutError]): F[Out] =
+    for {
+      httpResult <- doRequestBase[Out](url, accessToken, hazzlenutError)
+      outMaybe = httpResult.seq.headOption
+      out <- fromOption(outMaybe, hazzlenutError)
+    } yield out
+
+  protected def doRequestSeq[Out](url: String,
+                                  accessToken: AccessToken,
+                                  hazzlenutError: HazzlenutError)(
+    implicit commonReferences: CommonReferences[F],
+    unmarshaller: Unmarshaller[ResponseEntity, TwitchReply[Out]],
+    monadErrorThrowable: MonadError[F, HazzlenutError]
+  ): F[TwitchSeqWithMeta[Out]] =
+    for {
+      httpResult <- doRequestBase[Out](url, accessToken, hazzlenutError)
+      pagination <- fromOption(httpResult.pagination, hazzlenutError)
+      total <- fromOption(httpResult.total, hazzlenutError)
+    } yield TwitchSeqWithMeta(httpResult.seq, pagination, total)
 
   def user(accessToken: AccessToken)(
     implicit commonReferences: CommonReferences[F],
