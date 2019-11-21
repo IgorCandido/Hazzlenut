@@ -142,7 +142,6 @@ object TwitchClient {
                                         HazzlenutError]
       ): ZIO[Any, HazzlenutError, User] = {
         import TwitchReply._
-
         for {
           user <- doRequest[User](
             USERS_URL,
