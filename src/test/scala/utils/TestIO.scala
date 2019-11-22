@@ -6,12 +6,17 @@ import akka.stream.Materializer
 import cats.implicits._
 import cats.{Id, Monad, MonadError}
 import hazzlenut.errors.HazzlenutError
-import hazzlenut.errors.HazzlenutError.{ThrowableError, UnableToConnect, UnableToFetchFollowers, UnableToFetchUserInformation}
+import hazzlenut.errors.HazzlenutError.{
+  ThrowableError,
+  UnableToConnect,
+  UnableToFetchFollowers,
+  UnableToFetchUserInformation
+}
 import hazzlenut.handler.{AuthenticationHandler, TwitchClientHandler}
 import hazzlenut.services.twitch._
 import hazzlenut.services.twitch.actor.UserInfo
 import hazzlenut.services.twitch.actor.adapter.TwitchClient
-import hazzlenut.services.twitch.actor.helper.UserInfoInitializer
+import hazzlenut.services.twitch.actor.helper.{Executor, UserInfoInitializer}
 import hazzlenut.services.twitch.adapters.{AccessToken, Configuration, OAuth}
 import hazzlenut.services.twitch.helper.CommonReferences
 import hazzlenut.services.twitch.model.{Follow, TwitchSeqWithMeta, User}
@@ -178,7 +183,6 @@ trait TestIOAuth {
       override def reAuthenticate(): Either[HazzlenutError, Unit] =
         reAuthenticateParam()
     }
-
 }
 
 trait TestIOConfig {
@@ -473,6 +477,15 @@ trait TestIOUserInfoInitializer {
     }
 }
 
+trait TestIOExecutor {
+  implicit object TestIOExecutor extends Executor[TestIO] {
+    override def runToCompletion[A](f: TestIO[A]): A =
+      f.result.fold(throwable => throw throwable, a => a) // This is a joke of very bad taste. The only excuse is that
+                                                          // we are trying to achieve similar behaviour to a Effect like
+                                                          // Future or ZIO that the runToCompletion is unsafe
+  }
+}
+
 object TestIO
     extends TestIOMonad
     with TestIOAuth
@@ -481,4 +494,5 @@ object TestIO
     with TestIOUnmarshall
     with TestIOTwitchClient
     with TestIOUserInfoInitializer
-    with TestIOLoggerProvider {}
+    with TestIOLoggerProvider
+    with TestIOExecutor {}

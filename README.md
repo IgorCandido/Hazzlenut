@@ -1,9 +1,6 @@
 Work list:
-- Implement logging
-    - Using log-effect
-        Add more tests
-        Make sure to whilst waiting for the Logger result the actor is already only waiting to 
-        receive the outcome of the logger to run the become function
+- Logging
+    - Maybe change the runToCompletion on Executor to Either[Throwable, A]
 - Implement twitch get followers (for now polling)
     - Implemented with actor (Almost)
     - Asks UserInfo (Done, not tested)

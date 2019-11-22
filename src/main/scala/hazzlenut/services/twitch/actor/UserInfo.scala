@@ -13,12 +13,14 @@ import hazzlenut.services.twitch.actor.TokenHolder.ReplyAccessToken
 import hazzlenut.services.twitch.actor.UserInfo.{ProvideUser, RetrieveUser}
 import hazzlenut.services.twitch.model.User
 import hazzlenut.services.twitch.actor.adapter.{TokenHolderApi, TwitchClient}
+import hazzlenut.services.twitch.actor.helper.Executor
 import hazzlenut.util.ShowUtils._
 import hazzlenut.util.{HttpClient, LogProvider, UnmarshallerEntiy}
 import log.effect.LogLevels.Debug
+import hazzlenut.services.twitch.actor.helper.Executor.dsl._
 
 object UserInfo {
-  def props[F[_]: TwitchClientHandler: TwitchClient: HttpClient: LogProvider: Monad: UnmarshallerEntiy](
+  def props[F[_]: TwitchClientHandler: TwitchClient: HttpClient: LogProvider: Monad: UnmarshallerEntiy: Executor](
     tokenGuardian: ActorRef
   ): Props = Props(new UserInfo(tokenGuardian))
 
@@ -28,7 +30,7 @@ object UserInfo {
 
 // Killed when TokenHolder is killed in order to reAuthenticated
 // Created as soon as the Token is retrieved for a TokenHolder
-class UserInfo[F[_]: TwitchClientHandler: TwitchClient: HttpClient: Monad: UnmarshallerEntiy](
+class UserInfo[F[_]: TwitchClientHandler: TwitchClient: HttpClient: Monad: UnmarshallerEntiy: Executor](
   tokenHolder: ActorRef
 )(implicit logprovider: LogProvider[F])
     extends Actor {
@@ -58,14 +60,14 @@ class UserInfo[F[_]: TwitchClientHandler: TwitchClient: HttpClient: Monad: Unmar
       fetchToken(expiredAccessToken = true)
     case Status.Failure(error) => {
       // 1 - Retry
-      for {
+      (for {
         logger <- logprovider.getLoggerByName("UserInfo")
         _ <- logger.write(
           Debug,
           show"Failure on call to get User with error $error"
         )
       } yield
-        fetchToken() // Failed to Get User to get access token and try again
+        fetchToken()).runToCompletion // Failed to Get User to get access token and try again
       // 2 - Close app (Scenario not necessary for now)
     }
   }

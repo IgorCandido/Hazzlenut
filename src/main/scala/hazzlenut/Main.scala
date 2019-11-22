@@ -8,6 +8,7 @@ import hazzlenut.api.Authentication
 import hazzlenut.services.twitch.actor.TokenGuardian.ApplicationStarted
 import hazzlenut.services.twitch.actor.{TokenGuardian, UserInfo}
 import zio.interop.catz._
+import hazzlenut.util.ZIORuntime._
 
 object Main extends App {
   implicit val system = ActorSystem()

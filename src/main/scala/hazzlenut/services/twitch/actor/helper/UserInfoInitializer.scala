@@ -7,6 +7,7 @@ import hazzlenut.handler.TwitchClientHandler
 import hazzlenut.services.twitch.actor.UserInfo
 import hazzlenut.services.twitch.actor.adapter.TwitchClient
 import hazzlenut.util.{HttpClient, LogProvider}
+import hazzlenut.util.ZIORuntime._
 
 object UserInfoInitializer {
   implicit val akkaUserInfoInitializer =

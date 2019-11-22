@@ -11,6 +11,7 @@ import hazzlenut.services.twitch.actor.TokenHolder.{AskAccessToken, ReplyAccessT
 import hazzlenut.services.twitch.actor.UserInfo
 import hazzlenut.services.twitch.actor.UserInfo.{ProvideUser, RetrieveUser}
 import hazzlenut.services.twitch.actor.adapter.TwitchClient
+import hazzlenut.services.twitch.actor.helper.Executor
 import hazzlenut.services.twitch.model.User
 import hazzlenut.util.Semantic._
 import hazzlenut.util.{HttpClient, LogProvider, UnmarshallerEntiy}
@@ -33,7 +34,7 @@ class UserInfoSpec
 
   "UserInfo" should {
 
-    def createUserInfoAndStart[F[_]: TwitchClientHandler: TwitchClient: HttpClient: LogProvider: Monad: UnmarshallerEntiy](
+    def createUserInfoAndStart[F[_]: TwitchClientHandler: TwitchClient: HttpClient: LogProvider: Monad: UnmarshallerEntiy: Executor](
       actorRef: ActorRef
     ): ActorRef =
       system.actorOf(UserInfo.props[F](actorRef)).tap(_ ! ApplicationStarted)
@@ -143,7 +144,8 @@ class UserInfoSpec
         implicitly[HttpClient[TestIO]],
         providerLog,
         implicitly[Monad[TestIO]],
-        implicitly[UnmarshallerEntiy[TestIO]]
+        implicitly[UnmarshallerEntiy[TestIO]],
+        implicitly[Executor[TestIO]]
       )
 
       probe.expectMsg(AskAccessToken)
