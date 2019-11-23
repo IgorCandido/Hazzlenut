@@ -4,40 +4,61 @@ import akka.actor.{Actor, ActorRef, PoisonPill, Props}
 import cats.Monad
 import hazzlenut.errors.HazzlenutError
 import hazzlenut.handler.{AuthenticationHandler, TwitchClientHandler}
-import hazzlenut.services.twitch.actor.TokenGuardian.{ApplicationStarted, Authenticated, CantRenewToken}
+import hazzlenut.services.twitch.actor.TokenGuardian.{
+  ApplicationStarted,
+  Authenticated,
+  CantRenewToken
+}
 import hazzlenut.services.twitch.actor.adapter.TwitchClient
 import hazzlenut.services.twitch.adapters.AccessToken
-import hazzlenut.services.twitch.actor.helper.{TokenHolderInitializer, UserInfoInitializer}
+import hazzlenut.services.twitch.actor.helper.{
+  Executor,
+  TokenHolderInitializer,
+  UserInfoInitializer
+}
 import hazzlenut.util.{HttpClient, LogProvider}
+import log.effect.LogLevels.Debug
+import cats.implicits._
+import hazzlenut.services.twitch.actor.helper.Executor.dsl._
 
 object TokenGuardian {
+  val Name = "TokenGuardian"
+
   case object CantRenewToken
   case class Authenticated(accessToken: AccessToken)
   case object ApplicationStarted
 
-  def props[F[_]: UserInfoInitializer: TwitchClientHandler: TwitchClient: HttpClient: LogProvider: Monad](
+  def props[F[_]: UserInfoInitializer: TwitchClientHandler: TwitchClient: HttpClient: LogProvider: Monad: Executor](
     implicit authenticationHandler: AuthenticationHandler,
-    tokenHolderInitializer: TokenHolderInitializer,
+    tokenHolderInitializer: TokenHolderInitializer[F],
   ) =
     Props(new TokenGuardian())
 }
 
-class TokenGuardian[F[_]: TwitchClientHandler: TwitchClient: HttpClient: LogProvider](
+class TokenGuardian[F[_]: TwitchClientHandler: TwitchClient: HttpClient: LogProvider: Executor](
   implicit authenticationHandler: AuthenticationHandler,
-  tokenHolderInitializer: TokenHolderInitializer,
+  tokenHolderInitializer: TokenHolderInitializer[F],
   userInfoInitializer: UserInfoInitializer[F],
   monad: Monad[F]
 ) extends Actor {
 
   def workingNormally(tokenHolder: ActorRef, userInfo: ActorRef): Receive = {
     case CantRenewToken =>
-      authenticateUserAgainAndWaitForResult()
+      LogProvider
+        .log[F](
+          TokenGuardian.Name,
+          Debug,
+          "Not able to renew token, reAuthenticating user"
+        )
+        .map { _ =>
+          authenticateUserAgainAndWaitForResult()
 
-      // Kill TokenHolder
-      tokenHolder ! PoisonPill
-      // Kill UserInfo
-      userInfo ! PoisonPill
-
+          // Kill TokenHolder
+          tokenHolder ! PoisonPill
+          // Kill UserInfo
+          userInfo ! PoisonPill
+        }
+        .unsafeRun
     case msg @ (TokenHolder.TokenExpiredNeedNew | TokenHolder.AskAccessToken) =>
       tokenHolder forward msg
   }

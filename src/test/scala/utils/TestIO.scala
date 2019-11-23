@@ -479,10 +479,13 @@ trait TestIOUserInfoInitializer {
 
 trait TestIOExecutor {
   implicit object TestIOExecutor extends Executor[TestIO] {
-    override def runToCompletion[A](f: TestIO[A]): A =
+    override def unsafeRun[A](f: TestIO[A]): A =
       f.result.fold(throwable => throw throwable, a => a) // This is a joke of very bad taste. The only excuse is that
                                                           // we are trying to achieve similar behaviour to a Effect like
                                                           // Future or ZIO that the runToCompletion is unsafe
+
+    override def toEither[A](f: TestIO[A]): Either[Throwable, A] =
+      f.result
   }
 }
 

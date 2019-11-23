@@ -4,7 +4,6 @@ import akka.actor.{Actor, ActorRef, Props, Status}
 import akka.pattern.pipe
 import akka.stream.ActorMaterializer
 import cats.Monad
-import cats.implicits._
 import hazzlenut.errors.HazzlenutError.UnableToAuthenticate
 import hazzlenut.handler.TwitchClientHandler
 import hazzlenut.handler.TwitchClientHandler.dsl._
@@ -18,8 +17,11 @@ import hazzlenut.util.ShowUtils._
 import hazzlenut.util.{HttpClient, LogProvider, UnmarshallerEntiy}
 import log.effect.LogLevels.Debug
 import hazzlenut.services.twitch.actor.helper.Executor.dsl._
+import cats.implicits._
 
 object UserInfo {
+  val Name = "UserInfo"
+
   def props[F[_]: TwitchClientHandler: TwitchClient: HttpClient: LogProvider: Monad: UnmarshallerEntiy: Executor](
     tokenGuardian: ActorRef
   ): Props = Props(new UserInfo(tokenGuardian))
@@ -56,18 +58,24 @@ class UserInfo[F[_]: TwitchClientHandler: TwitchClient: HttpClient: Monad: Unmar
   def waitingForUser: Receive = {
     case user: User                                   => context.become(providingUser(user))
     case Status.Failure(_: UnableToAuthenticate.type) => // What to do when failure on getting User
-      // 3 - ReAuthenticate
-      fetchToken(expiredAccessToken = true)
+      LogProvider
+        .log[F](
+          UserInfo.Name,
+          Debug,
+          show"Failure on call to get User with error $UnableToAuthenticate"
+        )
+        .map(_ => fetchToken(expiredAccessToken = true)) // ReAuthenticate
+        .unsafeRun
     case Status.Failure(error) => {
       // 1 - Retry
-      (for {
-        logger <- logprovider.getLoggerByName("UserInfo")
-        _ <- logger.write(
+      LogProvider
+        .log[F](
+          UserInfo.Name,
           Debug,
           show"Failure on call to get User with error $error"
         )
-      } yield
-        fetchToken()).runToCompletion // Failed to Get User to get access token and try again
+        .map(_ => fetchToken()) // Failed to Get User to get access token and try again
+        .unsafeRun
       // 2 - Close app (Scenario not necessary for now)
     }
   }

@@ -1,11 +1,13 @@
 package hazzlenut.util
 
 import _root_.zio.{IO, Task, UIO, ZIO}
+import cats.Monad
 import hazzlenut.errors.HazzlenutError
 import hazzlenut.errors.HazzlenutError.ThrowableError
 import log.effect.internal.EffectSuspension
-import log.effect.{LogWriter, LogWriterConstructor, internal}
+import log.effect.{LogLevel, LogWriter, LogWriterConstructor, internal}
 import org.{log4s => l4s}
+import cats.implicits._
 
 trait LogProvider[F[_]] {
   def getLoggerByName(name: String): F[LogWriter[F]]
@@ -13,6 +15,14 @@ trait LogProvider[F[_]] {
 
 object LogProvider {
   import instances._
+
+  def log[F[_]: Monad](name: String, logLevel: LogLevel, msg: => String)(implicit logProvider: LogProvider[F]): F[Unit] =
+    (for{
+      logger <- logProvider.getLoggerByName(name)
+      _ <- logger.write(logLevel, msg)
+    }yield ())
+
+
   object instances {
     implicit final val taskEffectSuspension
       : EffectSuspension[ZIO[Any, HazzlenutError, ?]] =

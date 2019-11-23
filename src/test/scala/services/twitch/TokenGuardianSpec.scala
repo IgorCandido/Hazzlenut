@@ -39,7 +39,7 @@ class TokenGuardianSpec
           Either.right(Unit)
         })
 
-      implicit val tokenHolderInitializer = new TokenHolderInitializer {
+      implicit val tokenHolderInitializer = new TokenHolderInitializer[TestIO] {
         var numberTokenHolderCreated = 0
 
         override def initializeTokenHolder(accessToken: AccessToken,
@@ -75,7 +75,7 @@ class TokenGuardianSpec
           Either.right(Unit)
         })
 
-      implicit val tokenHolderInitializer = new TokenHolderInitializer {
+      implicit val tokenHolderInitializer = new TokenHolderInitializer[TestIO] {
         var numberTokenHolderCreated = 0
 
         override def initializeTokenHolder(accessToken: AccessToken,
@@ -116,7 +116,7 @@ class TokenGuardianSpec
           Either.right(Unit)
         })
 
-      implicit val tokenHolderInitializer = new TokenHolderInitializer {
+      implicit val tokenHolderInitializer = new TokenHolderInitializer[TestIO] {
         var numberTokenHolderCreated = 0
 
         override def initializeTokenHolder(accessToken: AccessToken,
@@ -159,7 +159,7 @@ class TokenGuardianSpec
           Either.right(Unit)
         })
 
-      implicit val tokenHolderInitializer = new TokenHolderInitializer {
+      implicit val tokenHolderInitializer = new TokenHolderInitializer[TestIO] {
         var numberTokenHolderCreated = 0
 
         override def initializeTokenHolder(accessToken: AccessToken,
@@ -202,7 +202,7 @@ class TokenGuardianSpec
           Either.right(Unit)
         })
 
-      implicit val tokenHolderInitializer = new TokenHolderInitializer {
+      implicit val tokenHolderInitializer = new TokenHolderInitializer[TestIO] {
         var numberTokenHolderCreated = 0
 
         override def initializeTokenHolder(accessToken: AccessToken,
@@ -241,7 +241,7 @@ class TokenGuardianSpec
           Either.right(Unit)
         })
 
-      implicit val tokenHolderInitializer = new TokenHolderInitializer {
+      implicit val tokenHolderInitializer = new TokenHolderInitializer[TestIO] {
         var numberTokenHolderCreated = 0
 
         override def initializeTokenHolder(accessToken: AccessToken,
@@ -296,7 +296,7 @@ class TokenGuardianSpec
           Either.right(Unit)
         })
 
-      implicit val tokenHolderInitializer = new TokenHolderInitializer {
+      implicit val tokenHolderInitializer = new TokenHolderInitializer[TestIO] {
         var numberTokenHolderCreated = 0
 
         override def initializeTokenHolder(accessToken: AccessToken,

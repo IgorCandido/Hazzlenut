@@ -3,15 +3,23 @@ package hazzlenut.services.twitch.actor
 import akka.actor.{Actor, ActorRef, Props}
 import akka.pattern.pipe
 import akka.stream.ActorMaterializer
+import cats.Monad
 import hazzlenut.errors.HazzlenutError
 import hazzlenut.handler.AuthenticationHandler
 import hazzlenut.services.twitch.actor.TokenGuardian.CantRenewToken
+import hazzlenut.services.twitch.actor.helper.Executor
 import hazzlenut.services.twitch.adapters.AccessToken
+import hazzlenut.util.LogProvider
+import log.effect.LogLevels.Debug
+import cats.implicits._
+import hazzlenut.services.twitch.actor.helper.Executor.dsl._
 
 object TokenHolder {
-  def props(accessToken: AccessToken, tokenGuardian: ActorRef)(
+  val Name = "TokenHolder"
+
+  def props[F[_]: Monad: LogProvider: Executor](accessToken: AccessToken, tokenGuardian: ActorRef)(
     implicit authenticationHandler: AuthenticationHandler
-  ) = Props(new TokenHolder(accessToken, tokenGuardian))
+  ) = Props(new TokenHolder[F](accessToken, tokenGuardian))
 
   case object AskAccessToken
   case class ReplyAccessToken(accessToken: AccessToken)
@@ -26,7 +34,7 @@ object TokenHolder {
  refresh oauth token,
  report problem on refreshing and advice that user goes through into Oauth flow again
  */
-class TokenHolder(accessToken: AccessToken, tokenGuardian: ActorRef)(
+class TokenHolder[F[_]: Monad: LogProvider: Executor](accessToken: AccessToken, tokenGuardian: ActorRef)(
   implicit authenticationHandler: AuthenticationHandler
 ) extends Actor {
   import AuthenticationHandler.dsl._
@@ -75,6 +83,9 @@ class TokenHolder(accessToken: AccessToken, tokenGuardian: ActorRef)(
       // Handle error refresh token, maybe retry? Maybe do this in ZIO even before piping out
       // Ultimate scenario token not refreshable inform that user needs to be pushed to oauth again
       // Maybe kill self actor considering there is not access token or refresh process going on
-      notAbleToRefresh
+      LogProvider.log[F](TokenHolder.Name, Debug, "Unable to refresh access token").map{
+        _ => notAbleToRefresh
+      }.unsafeRun
+
   }
 }

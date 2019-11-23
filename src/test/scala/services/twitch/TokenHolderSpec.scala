@@ -2,11 +2,19 @@ package services.twitch
 
 import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestKit, TestProbe}
+import cats.Monad
 import cats.implicits._
 import hazzlenut.services.twitch.actor.TokenHolder
-import hazzlenut.services.twitch.actor.TokenHolder.{AskAccessToken, ReplyAccessToken, TokenExpiredNeedNew}
+import hazzlenut.services.twitch.actor.TokenHolder.{
+  AskAccessToken,
+  ReplyAccessToken,
+  TokenExpiredNeedNew
+}
+import hazzlenut.services.twitch.actor.helper.Executor
 import hazzlenut.services.twitch.adapters.AccessToken
+import hazzlenut.util.LogProvider
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
+import utils.TestIO
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -36,7 +44,9 @@ class TokenHolderSpec
       val tokenGuardian = TestProbe()
 
       val tokenHolder =
-        system.actorOf(TokenHolder.props(accessToken, tokenGuardian.ref))
+        system.actorOf(
+          TokenHolder.props[TestIO](accessToken, tokenGuardian.ref)
+        )
 
       tokenHolder ! AskAccessToken
       val reply = expectMsgType[ReplyAccessToken]
@@ -62,7 +72,10 @@ class TokenHolderSpec
       implicit val ec = system.dispatcher
 
       val tokenHolder = system.actorOf(
-        TokenHolder.props(accessToken, tokenGuardian.ref)(
+        TokenHolder.props[TestIO](accessToken, tokenGuardian.ref)(
+          implicitly[Monad[TestIO]],
+          implicitly[LogProvider[TestIO]],
+          implicitly[Executor[TestIO]],
           authenticationHandlerWithValues(refreshTokenValue = Future {
             Thread.sleep(60);
 
@@ -110,6 +123,9 @@ class TokenHolderSpec
 
       val tokenHolder = system.actorOf(
         TokenHolder.props(accessToken, tokenGuardian.ref)(
+          implicitly[Monad[TestIO]],
+          implicitly[LogProvider[TestIO]],
+          implicitly[Executor[TestIO]],
           authenticationHandlerWithValues(refreshTokenValue = Future {
             Thread.sleep(50);
 
@@ -171,6 +187,9 @@ class TokenHolderSpec
 
       val tokenHolder = system.actorOf(
         TokenHolder.props(accessToken, tokenGuardian.ref)(
+          implicitly[Monad[TestIO]],
+          implicitly[LogProvider[TestIO]],
+          implicitly[Executor[TestIO]],
           authenticationHandlerWithValues(refreshTokenValue = Future {
             Thread.sleep(50);
 

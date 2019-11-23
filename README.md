@@ -1,6 +1,6 @@
 Work list:
 - Logging
-    - Maybe change the runToCompletion on Executor to Either[Throwable, A]
+    - Factor out function after log and unsafeRun
 - Implement twitch get followers (for now polling)
     - Implemented with actor (Almost)
     - Asks UserInfo (Done, not tested)
