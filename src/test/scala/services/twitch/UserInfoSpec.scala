@@ -6,7 +6,7 @@ import cats.implicits._
 import cats.{Id, Monad}
 import hazzlenut.errors.HazzlenutError.{UnableToAuthenticate, UnableToConnect}
 import hazzlenut.handler.TwitchClientHandler
-import hazzlenut.services.twitch.actor.TokenGuardian.ApplicationStarted
+import hazzlenut.services.twitch.actor.model.CommonMessages.ApplicationStarted
 import hazzlenut.services.twitch.actor.TokenHolder.{AskAccessToken, ReplyAccessToken, TokenExpiredNeedNew}
 import hazzlenut.services.twitch.actor.UserInfo
 import hazzlenut.services.twitch.actor.UserInfo.{ProvideUser, RetrieveUser}
@@ -35,58 +35,62 @@ class UserInfoSpec
   "UserInfo" should {
 
     def createUserInfoAndStart[F[_]: TwitchClientHandler: TwitchClient: HttpClient: LogProvider: Monad: UnmarshallerEntiy: Executor](
-      actorRef: ActorRef
+      tokenGuardian: ActorRef, tokenHolder: ActorRef
     ): ActorRef =
-      system.actorOf(UserInfo.props[F](actorRef)).tap(_ ! ApplicationStarted)
+      system.actorOf(UserInfo.props[F](tokenHolder)).tap(_ ! ApplicationStarted)
 
     "Ask for the token when it starts" in {
-      val probe = TestProbe()
+      val tokenHolder = TestProbe()
+      val tokenGuardian = TestProbe()
 
-      createUserInfoAndStart(probe.ref)
+      createUserInfoAndStart(tokenGuardian.ref, tokenHolder.ref)
 
-      probe.expectMsg(AskAccessToken)
+      tokenHolder.expectMsg(AskAccessToken)
       succeed
     }
 
     "Ask for the user when it receives the token" in {
-      val probe = TestProbe()
+      val tokenHolder = TestProbe()
+      val tokenGuardian = TestProbe()
 
       val user = UserGen.getSample()
 
       implicit val twitchClient =
         TestIO.createTwitchClient(userReturn = TestIO[User](Either.right(user)))
 
-      val userInfo = createUserInfoAndStart(probe.ref)
+      val userInfo = createUserInfoAndStart(tokenGuardian.ref, tokenHolder.ref)
 
-      probe.expectMsg(AskAccessToken)
+      tokenHolder.expectMsg(AskAccessToken)
 
-      userInfo.tell(ReplyAccessToken(dummyAccessToken), probe.ref)
+      userInfo.tell(ReplyAccessToken(dummyAccessToken), tokenHolder.ref)
 
       awaitAssert {
-        userInfo.tell(RetrieveUser, probe.ref)
-        probe.expectMsg(10 millis, ProvideUser(user))
+        userInfo.tell(RetrieveUser, tokenHolder.ref)
+        tokenHolder.expectMsg(10 millis, ProvideUser(user))
         succeed
       }
     }
 
     "Ask for the user and get UnAuthenticated" in {
-      val probe = TestProbe()
+      val tokenHolder = TestProbe()
+      val tokenGuardian = TestProbe()
 
       implicit val twitchClient = TestIO.createTwitchClient(
         userReturn = TestIO[User](Either.left(UnableToAuthenticate))
       )
 
-      val userInfo = createUserInfoAndStart(probe.ref)
+      val userInfo = createUserInfoAndStart(tokenGuardian.ref, tokenHolder.ref)
 
-      probe.expectMsg(AskAccessToken)
+      tokenHolder.expectMsg(AskAccessToken)
 
-      userInfo.tell(ReplyAccessToken(dummyAccessToken), probe.ref)
-      probe.expectMsg(TokenExpiredNeedNew)
+      userInfo.tell(ReplyAccessToken(dummyAccessToken), tokenHolder.ref)
+      tokenHolder.expectMsg(TokenExpiredNeedNew)
       succeed
     }
 
     "Ask for the user and get UnAuthenticated and Recover" in {
-      val probe = TestProbe()
+      val tokenHolder = TestProbe()
+      val tokenGuardian = TestProbe()
 
       val user = UserGen.getSample()
 
@@ -99,18 +103,18 @@ class UserInfoSpec
         it.next
       })
 
-      val userInfo = createUserInfoAndStart(probe.ref)
+      val userInfo = createUserInfoAndStart(tokenGuardian.ref, tokenHolder.ref)
 
-      probe.expectMsg(AskAccessToken)
+      tokenHolder.expectMsg(AskAccessToken)
 
-      userInfo.tell(ReplyAccessToken(dummyAccessToken), probe.ref)
-      probe.expectMsg(TokenExpiredNeedNew)
+      userInfo.tell(ReplyAccessToken(dummyAccessToken), tokenHolder.ref)
+      tokenHolder.expectMsg(TokenExpiredNeedNew)
 
-      userInfo.tell(ReplyAccessToken(dummyAccessToken), probe.ref)
+      userInfo.tell(ReplyAccessToken(dummyAccessToken), tokenHolder.ref)
 
       awaitAssert {
-        userInfo.tell(RetrieveUser, probe.ref)
-        probe.expectMsg(10 millis, ProvideUser(user))
+        userInfo.tell(RetrieveUser, tokenHolder.ref)
+        tokenHolder.expectMsg(10 millis, ProvideUser(user))
         succeed
       }
     }
@@ -119,7 +123,8 @@ class UserInfoSpec
       val expected =
         "Failure on call to get User with error Throwable: message: None, stackTrace: hazzlenut.errors.HazzlenutError$UnableToConnect$"
 
-      val probe = TestProbe()
+      val tokenHolder = TestProbe()
+      val tokenGuardian = TestProbe()
 
       implicit val twitchClient = TestIO.createTwitchClient(
         userReturn = TestIO[User](Either.left(UnableToConnect))
@@ -138,7 +143,7 @@ class UserInfoSpec
       implicit val providerLog: LogProvider[TestIO] =
         createLogProvider(applyOnLogging)
 
-      val userInfo = createUserInfoAndStart(probe.ref)(
+      val userInfo = createUserInfoAndStart(tokenGuardian.ref, tokenHolder.ref)(
         implicitly[TwitchClientHandler[TestIO]],
         implicitly[TwitchClient[TestIO]],
         implicitly[HttpClient[TestIO]],
@@ -148,10 +153,10 @@ class UserInfoSpec
         implicitly[Executor[TestIO]]
       )
 
-      probe.expectMsg(AskAccessToken)
+      tokenHolder.expectMsg(AskAccessToken)
 
-      userInfo.tell(ReplyAccessToken(dummyAccessToken), probe.ref)
-      probe.expectMsg(AskAccessToken)
+      userInfo.tell(ReplyAccessToken(dummyAccessToken), tokenHolder.ref)
+      tokenHolder.expectMsg(AskAccessToken)
       assert(applyOnLogging.written._1 contains expected)
       assert(applyOnLogging.written._2 == Debug)
     }

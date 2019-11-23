@@ -9,8 +9,16 @@ import akka.util.Timeout
 import hazzlenut.errors.HazzlenutError
 import hazzlenut.handler.TwitchClientHandler.dsl._
 import hazzlenut.handler.{AuthenticationHandler, TwitchClientHandler}
-import hazzlenut.services.twitch.actor.TokenGuardian.Authenticated
-import hazzlenut.services.twitch.actor.TokenHolder.{AskAccessToken, ReplyAccessToken}
+import hazzlenut.services.twitch.actor.TokenGuardian
+import hazzlenut.services.twitch.actor.TokenGuardian.Message.{
+  Authenticated,
+  RequireService,
+  ServiceProvide
+}
+import hazzlenut.services.twitch.actor.TokenHolder.{
+  AskAccessToken,
+  ReplyAccessToken
+}
 import hazzlenut.services.twitch.actor.UserInfo.{ProvideUser, RetrieveUser}
 import hazzlenut.services.twitch.actor.adapter.TwitchClient
 import hazzlenut.util.{HttpClient, UnmarshallerEntiy}
@@ -20,15 +28,14 @@ import scala.concurrent.duration._
 
 object Authentication {
 
-  def publicRoute(tokenGuardian: ActorRef, userInfo: ActorRef)(
-    implicit actorSystem: ActorSystem
-  ): Route = {
-    route[ZIO[Any, HazzlenutError, ?]](tokenGuardian, userInfo)
+  def publicRoute(
+    tokenGuardian: ActorRef
+  )(implicit actorSystem: ActorSystem): Route = {
+    route[ZIO[Any, HazzlenutError, ?]](tokenGuardian)
   }
 
   def route[F[_]: TwitchClientHandler: TwitchClient: HttpClient: UnmarshallerEntiy](
-    tokenGuardian: ActorRef,
-    userInfo: ActorRef
+    tokenGuardian: ActorRef
   )(implicit a: AuthenticationHandler): Route = {
     import AuthenticationHandler.dsl._
     get {
@@ -111,6 +118,9 @@ object Authentication {
                   onSuccess(for {
                     token <- (tokenGuardian ? AskAccessToken)
                       .mapTo[ReplyAccessToken]
+                    userInfo <- (tokenGuardian ? RequireService(
+                      TokenGuardian.ServiceType.UserInfo
+                    )).mapTo[ServiceProvide].map(_.actorRef)
                     user <- (userInfo ? RetrieveUser)
                       .mapTo[ProvideUser]
                     followers <- retrieveFollowers(

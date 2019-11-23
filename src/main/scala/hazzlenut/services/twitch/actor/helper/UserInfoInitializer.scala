@@ -1,33 +1,48 @@
 package hazzlenut.services.twitch.actor.helper
 
-import akka.actor.{ActorContext, ActorRef}
+import akka.actor.{ActorContext, ActorRef, ActorSystem}
 import cats.Monad
 import hazzlenut.HazzleNutZIO
 import hazzlenut.handler.TwitchClientHandler
-import hazzlenut.services.twitch.actor.UserInfo
+import hazzlenut.services.twitch.actor.TokenGuardian.{Initializer, ServiceInitializer, ServiceType}
+import hazzlenut.services.twitch.actor.{TokenGuardian, UserInfo}
 import hazzlenut.services.twitch.actor.adapter.TwitchClient
 import hazzlenut.util.{HttpClient, LogProvider}
 import hazzlenut.util.ZIORuntime._
 
 object UserInfoInitializer {
-  implicit val akkaUserInfoInitializer =
-    new UserInfoInitializer[HazzleNutZIO] {
-      override def initializeUserInfo(tokenHolder: ActorRef)(
-        implicit context: ActorContext,
+  implicit final case object akkaUserInfoInitializer extends UserInfoInitializer[HazzleNutZIO] {
+      override def initializeUserInfo(
+        tokenGuardian: ActorRef,
+        tokenHolder: ActorRef
+      )(implicit system: ActorSystem,
         twitchClientHandler: TwitchClientHandler[HazzleNutZIO],
         twitchClient: TwitchClient[HazzleNutZIO],
         httpClient: HttpClient[HazzleNutZIO],
         logProvider: LogProvider[HazzleNutZIO],
-        monad: Monad[HazzleNutZIO]
-      ): ActorRef = {
-        context.actorOf(UserInfo.props[HazzleNutZIO](tokenHolder))
+        monad: Monad[HazzleNutZIO]): ActorRef = {
+        system.actorOf(
+          UserInfo.props[HazzleNutZIO](tokenHolder)
+        )
       }
     }
+
+  def apply[F[_]](
+    implicit userInfoInitializer: UserInfoInitializer[F]
+  ): UserInfoInitializer[F] = userInfoInitializer
+
+  def initializer[F[_]: TwitchClientHandler: TwitchClient: HttpClient: LogProvider: Monad: UserInfoInitializer](
+    implicit system: ActorSystem,
+  ): ServiceInitializer =
+    ServiceInitializer(
+      ServiceType.UserInfo,
+      UserInfoInitializer[F].initializeUserInfo _
+    )
 }
 
 trait UserInfoInitializer[F[_]] {
-  def initializeUserInfo(tokenHolder: ActorRef)(
-    implicit context: ActorContext,
+  def initializeUserInfo(tokenGuardian: ActorRef, tokenHolder: ActorRef)(
+    implicit system: ActorSystem,
     twitchClientHandler: TwitchClientHandler[F],
     twitchClient: TwitchClient[F],
     httpClient: HttpClient[F],

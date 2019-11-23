@@ -4,7 +4,7 @@ import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.testkit.TestProbe
 import cats.implicits._
 import hazzlenut.api.Authentication
-import hazzlenut.services.twitch.actor.TokenGuardian.Authenticated
+import hazzlenut.services.twitch.actor.TokenGuardian.Message.Authenticated
 import hazzlenut.services.twitch.adapters.AccessToken
 import hazzlenut.util.HttpClient
 import org.scalatest.{Matchers, WordSpecLike}
@@ -39,7 +39,7 @@ class AuthenticationSpec
         TestIO.defaultEmptyResponseHttpClient
 
       val authenticationRoute =
-        Authentication.route(tokenGuardianProbe.ref, userInfoProbe.ref)
+        Authentication.route(tokenGuardianProbe.ref)
 
       Get("/oauth/reply?code=testCode") ~> authenticationRoute ~> check {
         handled should ===(true)

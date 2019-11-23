@@ -6,7 +6,7 @@ import akka.stream.ActorMaterializer
 import cats.Monad
 import hazzlenut.errors.HazzlenutError
 import hazzlenut.handler.AuthenticationHandler
-import hazzlenut.services.twitch.actor.TokenGuardian.CantRenewToken
+import hazzlenut.services.twitch.actor.TokenGuardian.Message.CantRenewToken
 import hazzlenut.services.twitch.actor.helper.Executor
 import hazzlenut.services.twitch.adapters.AccessToken
 import hazzlenut.util.LogProvider

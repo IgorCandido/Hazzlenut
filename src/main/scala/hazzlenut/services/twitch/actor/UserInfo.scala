@@ -7,7 +7,7 @@ import cats.Monad
 import hazzlenut.errors.HazzlenutError.UnableToAuthenticate
 import hazzlenut.handler.TwitchClientHandler
 import hazzlenut.handler.TwitchClientHandler.dsl._
-import hazzlenut.services.twitch.actor.TokenGuardian.ApplicationStarted
+import hazzlenut.services.twitch.actor.TokenGuardian.Message.ApplicationStarted
 import hazzlenut.services.twitch.actor.TokenHolder.ReplyAccessToken
 import hazzlenut.services.twitch.actor.UserInfo.{ProvideUser, RetrieveUser}
 import hazzlenut.services.twitch.model.User
@@ -18,13 +18,14 @@ import hazzlenut.util.{HttpClient, LogProvider, UnmarshallerEntiy}
 import log.effect.LogLevels.Debug
 import hazzlenut.services.twitch.actor.helper.Executor.dsl._
 import cats.implicits._
+import hazzlenut.services.twitch.actor.model.CommonMessages
 
 object UserInfo {
   val Name = "UserInfo"
 
   def props[F[_]: TwitchClientHandler: TwitchClient: HttpClient: LogProvider: Monad: UnmarshallerEntiy: Executor](
-    tokenGuardian: ActorRef
-  ): Props = Props(new UserInfo(tokenGuardian))
+    tokenHolder: ActorRef
+  ): Props = Props(new UserInfo(tokenHolder))
 
   case object RetrieveUser
   case class ProvideUser(user: User)
@@ -81,7 +82,7 @@ class UserInfo[F[_]: TwitchClientHandler: TwitchClient: HttpClient: Monad: Unmar
   }
 
   override def receive: Receive = {
-    case ApplicationStarted =>
+    case CommonMessages.ApplicationStarted =>
       fetchToken()
   }
 }

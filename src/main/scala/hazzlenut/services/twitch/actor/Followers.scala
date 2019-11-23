@@ -13,8 +13,8 @@ import hazzlenut.services.twitch.adapters.AccessToken
 import scala.concurrent.{ExecutionContext, Future}
 
 object Followers {
-  def props(tokenHolder: ActorRef, userInfo: ActorRef): Props =
-    Props(new Followers(tokenHolder, userInfo))
+  def props[F[_]](tokenHolder: ActorRef, userInfo: ActorRef): Props =
+    Props(new Followers[F](tokenHolder, userInfo))
 
   final case object RetrieveFollowers
   final case class ProvideFollowers(followers: Seq[Follower])
@@ -24,7 +24,7 @@ object Followers {
   final case class Follower(userName: String)
 }
 
-class Followers(tokenHolder: ActorRef, userInfo: ActorRef) extends Actor {
+class Followers[F[_]](tokenHolder: ActorRef, userInfo: ActorRef) extends Actor {
   implicit val system = context.system
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher

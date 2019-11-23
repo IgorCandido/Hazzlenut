@@ -438,20 +438,20 @@ trait TestIOLoggerProvider {
 }
 
 trait TestIOUserInfoInitializer {
-  type UserInfoInitializerType = (ActorContext,
+  type UserInfoInitializerType = (ActorSystem,
                                   TwitchClientHandler[TestIO],
                                   TwitchClient[TestIO],
                                   HttpClient[TestIO]) => ActorRef
 
   implicit def dummyActorRef(actorRef: ActorRef) =
-    (_: ActorContext,
+    (_: ActorSystem,
      _: TwitchClientHandler[TestIO],
      _: TwitchClient[TestIO],
      _: HttpClient[TestIO]) => actorRef
 
-  def userInfoInitializer(tokenHolder: ActorRef) =
+  def userInfoInitializer(tokenGuardian: ActorRef, tokenHolder: ActorRef) =
     userInfoInitializerWithActor(
-      (context: ActorContext,
+      (context: ActorSystem,
        _: TwitchClientHandler[TestIO],
        _: TwitchClient[TestIO],
        _: HttpClient[TestIO]) =>
@@ -460,8 +460,8 @@ trait TestIOUserInfoInitializer {
 
   def userInfoInitializerWithActor(actorRefGenerator: UserInfoInitializerType) =
     new UserInfoInitializer[TestIO] {
-      override def initializeUserInfo(tokenHolder: ActorRef)(
-        implicit context: ActorContext,
+      override def initializeUserInfo(tokenGuardian: ActorRef, tokenHolder: ActorRef)(
+        implicit context: ActorSystem,
         twitchClientHandler: TwitchClientHandler[TestIO],
         twitchClient: TwitchClient[TestIO],
         httpClient: HttpClient[TestIO],
