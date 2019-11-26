@@ -8,6 +8,8 @@ import log.effect.internal.EffectSuspension
 import log.effect.{LogLevel, LogWriter, LogWriterConstructor, internal}
 import org.{log4s => l4s}
 import cats.implicits._
+import hazzlenut.services.twitch.actor.helper.Executor
+import hazzlenut.services.twitch.actor.helper.Executor.dsl._
 
 trait LogProvider[F[_]] {
   def getLoggerByName(name: String): F[LogWriter[F]]
@@ -16,12 +18,20 @@ trait LogProvider[F[_]] {
 object LogProvider {
   import instances._
 
-  def log[F[_]: Monad](name: String, logLevel: LogLevel, msg: => String)(implicit logProvider: LogProvider[F]): F[Unit] =
-    (for{
+  def log[F[_]: Monad](name: String, logLevel: LogLevel, msg: => String)(
+    implicit logProvider: LogProvider[F]
+  ): F[Unit] =
+    (for {
       logger <- logProvider.getLoggerByName(name)
       _ <- logger.write(logLevel, msg)
-    }yield ())
+    } yield ())
 
+  def unsafeLogWithAction[F[_]: Monad: LogProvider: Executor](
+    name: String,
+    logLevel: LogLevel,
+    msg: => String
+  )(action: => Unit): Unit =
+    log[F](name, logLevel, msg).map(_ => action).unsafeRun
 
   object instances {
     implicit final val taskEffectSuspension

@@ -17,9 +17,11 @@ import hazzlenut.services.twitch.actor.helper.Executor.dsl._
 object TokenHolder {
   val Name = "TokenHolder"
 
-  def props[F[_]: Monad: LogProvider: Executor](accessToken: AccessToken, tokenGuardian: ActorRef)(
-    implicit authenticationHandler: AuthenticationHandler
-  ) = Props(new TokenHolder[F](accessToken, tokenGuardian))
+  def props[F[_]: Monad: LogProvider: Executor](
+    accessToken: AccessToken,
+    tokenGuardian: ActorRef
+  )(implicit authenticationHandler: AuthenticationHandler) =
+    Props(new TokenHolder[F](accessToken, tokenGuardian))
 
   case object AskAccessToken
   case class ReplyAccessToken(accessToken: AccessToken)
@@ -34,9 +36,11 @@ object TokenHolder {
  refresh oauth token,
  report problem on refreshing and advice that user goes through into Oauth flow again
  */
-class TokenHolder[F[_]: Monad: LogProvider: Executor](accessToken: AccessToken, tokenGuardian: ActorRef)(
-  implicit authenticationHandler: AuthenticationHandler
-) extends Actor {
+class TokenHolder[F[_]: Monad: LogProvider: Executor](
+  accessToken: AccessToken,
+  tokenGuardian: ActorRef
+)(implicit authenticationHandler: AuthenticationHandler)
+    extends Actor {
   import AuthenticationHandler.dsl._
   import TokenHolder._
 
@@ -83,9 +87,13 @@ class TokenHolder[F[_]: Monad: LogProvider: Executor](accessToken: AccessToken, 
       // Handle error refresh token, maybe retry? Maybe do this in ZIO even before piping out
       // Ultimate scenario token not refreshable inform that user needs to be pushed to oauth again
       // Maybe kill self actor considering there is not access token or refresh process going on
-      LogProvider.log[F](TokenHolder.Name, Debug, "Unable to refresh access token").map{
-        _ => notAbleToRefresh
-      }.unsafeRun
+      LogProvider.unsafeLogWithAction[F](
+        TokenHolder.Name,
+        Debug,
+        "Unable to refresh access token"
+      ) {
+        notAbleToRefresh
+      }
 
   }
 }

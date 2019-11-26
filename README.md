@@ -1,8 +1,6 @@
 Work list:
-- Logging
-    - Factor out function after log and unsafeRun
 - Implement twitch get followers (for now polling)
-    - Implemented with actor (Almost)
+    - Implemented with actor (Almost) -- Finish algorithm for merge list of followers
     - Asks UserInfo (Done, not tested)
     - Asks Token (Done, not tested)
     - Returning FollowersReply, implement lense for Users following

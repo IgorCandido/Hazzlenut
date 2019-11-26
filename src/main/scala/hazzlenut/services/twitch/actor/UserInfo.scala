@@ -57,26 +57,22 @@ class UserInfo[F[_]: TwitchClientHandler: TwitchClient: HttpClient: Monad: Unmar
   }
 
   def waitingForUser: Receive = {
-    case user: User                                   => context.become(providingUser(user))
+    case user: User => context.become(providingUser(user))
     case Status.Failure(_: UnableToAuthenticate.type) => // What to do when failure on getting User
-      LogProvider
-        .log[F](
-          UserInfo.Name,
-          Debug,
-          show"Failure on call to get User with error $UnableToAuthenticate"
-        )
-        .map(_ => fetchToken(expiredAccessToken = true)) // ReAuthenticate
-        .unsafeRun
+      LogProvider.unsafeLogWithAction[F](
+        UserInfo.Name,
+        Debug,
+        show"Failure on call to get User with error $UnableToAuthenticate"
+      ) {
+        fetchToken(expiredAccessToken = true)
+      }
     case Status.Failure(error) => {
       // 1 - Retry
-      LogProvider
-        .log[F](
-          UserInfo.Name,
-          Debug,
-          show"Failure on call to get User with error $error"
-        )
-        .map(_ => fetchToken()) // Failed to Get User to get access token and try again
-        .unsafeRun
+      LogProvider.unsafeLogWithAction[F](UserInfo.Name,
+        Debug,
+        show"Failure on call to get User with error $error"){
+        fetchToken() // Failed to Get User to get access token and try again
+      }
       // 2 - Close app (Scenario not necessary for now)
     }
   }

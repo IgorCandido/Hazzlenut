@@ -4,11 +4,19 @@ import akka.actor.{Actor, ActorRef, PoisonPill, Props}
 import cats.Monad
 import hazzlenut.errors.HazzlenutError
 import hazzlenut.handler.{AuthenticationHandler, TwitchClientHandler}
-import hazzlenut.services.twitch.actor.TokenGuardian.{Service, ServiceInitializer, ServiceType}
+import hazzlenut.services.twitch.actor.TokenGuardian.{
+  Service,
+  ServiceInitializer,
+  ServiceType
+}
 import hazzlenut.services.twitch.actor.TokenGuardian.Message._
 import hazzlenut.services.twitch.actor.adapter.TwitchClient
 import hazzlenut.services.twitch.adapters.AccessToken
-import hazzlenut.services.twitch.actor.helper.{Executor, TokenHolderInitializer, UserInfoInitializer}
+import hazzlenut.services.twitch.actor.helper.{
+  Executor,
+  TokenHolderInitializer,
+  UserInfoInitializer
+}
 import hazzlenut.util.{HttpClient, LogProvider}
 import log.effect.LogLevels.Debug
 import cats.implicits._
@@ -89,12 +97,11 @@ class TokenGuardian[F[_]: TwitchClientHandler: TwitchClient: HttpClient: LogProv
       fullfilService(serviceType, services)
     case CantRenewToken =>
       LogProvider
-        .log[F](
+        .unsafeLogWithAction[F](
           TokenGuardian.Name,
           Debug,
           "Not able to renew token, reAuthenticating user"
-        )
-        .map { _ =>
+        ) {
           authenticateUserAgainAndWaitForResult()
 
           // Kill TokenHolder
@@ -102,7 +109,6 @@ class TokenGuardian[F[_]: TwitchClientHandler: TwitchClient: HttpClient: LogProv
           // Kill Services
           poisonAllServices(services)
         }
-        .unsafeRun
     case msg @ (TokenHolder.TokenExpiredNeedNew | TokenHolder.AskAccessToken) =>
       tokenHolder forward msg
   }
@@ -118,14 +124,10 @@ class TokenGuardian[F[_]: TwitchClientHandler: TwitchClient: HttpClient: LogProv
         case (sender, msg) => tokenHolder.tell(msg, sender)
       }
 
-      val services = initializeAllServices(self, tokenHolder, servicesInitializers)
-      context.become(
-        workingNormally(
-          tokenHolder,
-          services
-        )
-      )
-      services.foreach{_.actorRef ! CommonMessages.ApplicationStarted}
+      val services =
+        initializeAllServices(self, tokenHolder, servicesInitializers)
+      context.become(workingNormally(tokenHolder, services))
+      services.foreach { _.actorRef ! CommonMessages.ApplicationStarted }
 
     case msg @ TokenHolder.AskAccessToken =>
       context.become(
