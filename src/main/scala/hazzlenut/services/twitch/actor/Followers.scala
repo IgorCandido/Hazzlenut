@@ -31,6 +31,18 @@ object Followers {
                                        total: Long)
 
   final case class Follower(userName: String, followedAt: String)
+
+  // Merge list
+  def mergeFollowers(existingFollowers: Seq[Follower],
+                     newFollowers: Seq[Follower]): Seq[Follower] = {
+    def loop(existing: Seq[Follower], newFollowers: Seq[Follower]): Seq[Follower] =
+      newFollowers match {
+        case Nil => existing
+        case h :: tail if existing exists (_.userName == h.userName) => loop(existing, tail)
+        case h :: tail => loop(existing :+ h, tail)
+      }
+    loop(existingFollowers, newFollowers)
+  }
 }
 
 class Followers[F[_]: TwitchClientHandler: TwitchClient: HttpClient: UnmarshallerEntiy](
@@ -57,20 +69,9 @@ class Followers[F[_]: TwitchClientHandler: TwitchClient: HttpClient: Unmarshalle
 
   def waitingForUserInfo(accessToken: AccessToken): Receive = {
     case ProvideUser(user) => {
-      context.become(pollFollowers(accessToken, user, Seq.empty))
+      context.become(pollFollowers(accessToken, user, Seq.empty, None, 0))
       self ! PollFollowers
     }
-  }
-
-  // Merge list
-  def handle(existingFollowers: Set[Follower],
-             newFollowers: Seq[Follower]): Seq[Follower] = {
-    def loop(existing: Set[Follower], newFollowers: Seq[Follower]): List[Follower] =
-      newFollowers match {
-        case h :: tail if existing contains h => loop(existing, tail)
-        case h :: tail => h :: loop(existing + h, tail)
-      }
-    loop(existingFollowers, newFollowers)
   }
 
   // Retrieve list of followers
@@ -100,7 +101,7 @@ class Followers[F[_]: TwitchClientHandler: TwitchClient: HttpClient: Unmarshalle
         pollFollowers(
           accessToken,
           user,
-          handle(existingFollowers = followers, newFollowers = newFollowers),
+          mergeFollowers(existingFollowers = followers, newFollowers = newFollowers),
           cursor.some,
           total
         )
