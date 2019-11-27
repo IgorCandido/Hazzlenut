@@ -1,8 +1,10 @@
 package hazzlenut.services.twitch.actor
 
 import akka.actor.{Actor, ActorRef, Props, Status}
+import akka.event.Logging.LogLevel
 import akka.pattern.pipe
 import akka.stream.ActorMaterializer
+import cats.Monad
 import hazzlenut.handler.TwitchClientHandler
 import hazzlenut.handler.TwitchClientHandler.dsl.retrieveFollowers
 import hazzlenut.services.twitch.actor.Followers._
@@ -11,13 +13,18 @@ import hazzlenut.services.twitch.actor.UserInfo.{ProvideUser, RetrieveUser}
 import hazzlenut.services.twitch.actor.adapter.{TokenHolderApi, TwitchClient}
 import hazzlenut.services.twitch.model.User
 import hazzlenut.services.twitch.adapters.AccessToken
-import hazzlenut.util.{HttpClient, UnmarshallerEntiy}
+import hazzlenut.util.{HttpClient, LogProvider, UnmarshallerEntiy}
 import cats.implicits._
+import hazzlenut.services.twitch.actor.helper.Executor
+import log.effect.LogLevels
+import hazzlenut.services.twitch.actor.helper.Executor.dsl._
 
 import scala.concurrent.{ExecutionContext, Future}
 
 object Followers {
-  def props[F[_]: TwitchClientHandler: TwitchClient: HttpClient: UnmarshallerEntiy](
+  val Name = "Followers"
+
+  def props[F[_]: Monad: TwitchClientHandler: TwitchClient: HttpClient: UnmarshallerEntiy: LogProvider: Executor](
     tokenHolder: ActorRef,
     userInfo: ActorRef
   ): Props =
@@ -45,7 +52,7 @@ object Followers {
   }
 }
 
-class Followers[F[_]: TwitchClientHandler: TwitchClient: HttpClient: UnmarshallerEntiy](
+class Followers[F[_]: Monad: TwitchClientHandler: TwitchClient: HttpClient: UnmarshallerEntiy: LogProvider: Executor](
   tokenHolder: ActorRef,
   userInfo: ActorRef
 ) extends Actor {
@@ -107,5 +114,6 @@ class Followers[F[_]: TwitchClientHandler: TwitchClient: HttpClient: Unmarshalle
         )
       )
     case Status.Failure(failure) =>
+      LogProvider.log[F](Name, LogLevels.Error, "failed to retrieve followers").unsafeRun
   }
 }
