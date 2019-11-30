@@ -4,25 +4,18 @@ import akka.actor.{Actor, ActorRef, PoisonPill, Props}
 import cats.Monad
 import hazzlenut.errors.HazzlenutError
 import hazzlenut.handler.{AuthenticationHandler, TwitchClientHandler}
-import hazzlenut.services.twitch.actor.TokenGuardian.{
-  Service,
-  ServiceInitializer,
-  ServiceType
-}
+import hazzlenut.services.twitch.actor.TokenGuardian.{Service, ServiceInitializer, ServiceType}
 import hazzlenut.services.twitch.actor.TokenGuardian.Message._
 import hazzlenut.services.twitch.actor.adapter.TwitchClient
 import hazzlenut.services.twitch.adapters.AccessToken
-import hazzlenut.services.twitch.actor.helper.{
-  Executor,
-  TokenHolderInitializer,
-  UserInfoInitializer
-}
+import hazzlenut.services.twitch.actor.helper.{Executor, TokenHolderInitializer, UserInfoInitializer}
 import hazzlenut.util.{HttpClient, LogProvider}
 import log.effect.LogLevels.Debug
 import cats.implicits._
 import hazzlenut.errors.HazzlenutError.UnableToAuthenticate
 import hazzlenut.services.twitch.actor.helper.Executor.dsl._
 import hazzlenut.services.twitch.actor.model.CommonMessages
+import hazzlenut.services.twitch.actor.model.CommonMessages.ApplicationStarted
 import log.effect.{LogLevel, LogLevels}
 
 object TokenGuardian {
@@ -33,7 +26,6 @@ object TokenGuardian {
   object Message {
     case object CantRenewToken
     case class Authenticated(accessToken: AccessToken)
-    case object ApplicationStarted
     case class RequireService(serviceType: ServiceType)
     case class ServiceProvide(serviceType: ServiceType, actorRef: ActorRef)
   }
@@ -75,7 +67,7 @@ class TokenGuardian[F[_]: TwitchClientHandler: TwitchClient: HttpClient: LogProv
       Service(sI.serviceType, sI.initializer(tokenGuardian, tokenHolder))
     }
 
-  def fullfilService(serviceType: ServiceType, services: Seq[Service]): Unit =
+  def fulfillService(serviceType: ServiceType, services: Seq[Service]): Unit =
     services
       .find { service =>
         service.serviceType == serviceType
@@ -94,7 +86,7 @@ class TokenGuardian[F[_]: TwitchClientHandler: TwitchClient: HttpClient: LogProv
 
   def workingNormally(tokenHolder: ActorRef, services: Seq[Service]): Receive = {
     case RequireService(serviceType) =>
-      fullfilService(serviceType, services)
+      fulfillService(serviceType, services)
     case CantRenewToken =>
       LogProvider
         .unsafeLogWithAction[F](

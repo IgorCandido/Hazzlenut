@@ -7,7 +7,6 @@ import cats.Monad
 import hazzlenut.errors.HazzlenutError.UnableToAuthenticate
 import hazzlenut.handler.TwitchClientHandler
 import hazzlenut.handler.TwitchClientHandler.dsl._
-import hazzlenut.services.twitch.actor.TokenGuardian.Message.ApplicationStarted
 import hazzlenut.services.twitch.actor.TokenHolder.ReplyAccessToken
 import hazzlenut.services.twitch.actor.UserInfo.{ProvideUser, RetrieveUser}
 import hazzlenut.services.twitch.model.User

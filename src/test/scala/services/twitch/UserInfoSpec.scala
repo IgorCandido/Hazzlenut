@@ -7,7 +7,11 @@ import cats.{Id, Monad}
 import hazzlenut.errors.HazzlenutError.{UnableToAuthenticate, UnableToConnect}
 import hazzlenut.handler.TwitchClientHandler
 import hazzlenut.services.twitch.actor.model.CommonMessages.ApplicationStarted
-import hazzlenut.services.twitch.actor.TokenHolder.{AskAccessToken, ReplyAccessToken, TokenExpiredNeedNew}
+import hazzlenut.services.twitch.actor.TokenHolder.{
+  AskAccessToken,
+  ReplyAccessToken,
+  TokenExpiredNeedNew
+}
 import hazzlenut.services.twitch.actor.UserInfo
 import hazzlenut.services.twitch.actor.UserInfo.{ProvideUser, RetrieveUser}
 import hazzlenut.services.twitch.actor.adapter.TwitchClient
@@ -35,7 +39,8 @@ class UserInfoSpec
   "UserInfo" should {
 
     def createUserInfoAndStart[F[_]: TwitchClientHandler: TwitchClient: HttpClient: LogProvider: Monad: UnmarshallerEntiy: Executor](
-      tokenGuardian: ActorRef, tokenHolder: ActorRef
+      tokenGuardian: ActorRef,
+      tokenHolder: ActorRef
     ): ActorRef =
       system.actorOf(UserInfo.props[F](tokenHolder)).tap(_ ! ApplicationStarted)
 

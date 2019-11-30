@@ -6,12 +6,13 @@ import cats.Monad
 import cats.implicits._
 import hazzlenut.handler.{AuthenticationHandler, TwitchClientHandler}
 import hazzlenut.services.twitch._
-import hazzlenut.services.twitch.actor.TokenGuardian.Message.{ApplicationStarted, Authenticated, RequireService, ServiceProvide}
+import hazzlenut.services.twitch.actor.TokenGuardian.Message.{Authenticated, RequireService, ServiceProvide}
 import hazzlenut.services.twitch.actor.TokenGuardian.ServiceInitializer
 import hazzlenut.services.twitch.actor.TokenHolder.AskAccessToken
 import hazzlenut.services.twitch.actor.adapter.TwitchClient
 import hazzlenut.services.twitch.actor.helper.{TokenHolderInitializer, UserInfoInitializer}
 import hazzlenut.services.twitch.actor.model.CommonMessages
+import hazzlenut.services.twitch.actor.model.CommonMessages.ApplicationStarted
 import hazzlenut.services.twitch.actor.{TokenGuardian, TokenHolder}
 import hazzlenut.services.twitch.adapters.AccessToken
 import hazzlenut.util.{HttpClient, LogProvider}

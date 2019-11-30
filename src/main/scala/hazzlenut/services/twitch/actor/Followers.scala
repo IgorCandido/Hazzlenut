@@ -15,20 +15,26 @@ import hazzlenut.services.twitch.model.User
 import hazzlenut.services.twitch.adapters.AccessToken
 import hazzlenut.util.{HttpClient, LogProvider, UnmarshallerEntiy}
 import cats.implicits._
+import hazzlenut.services.twitch.actor.TokenGuardian.Message.{RequireService, ServiceProvide}
+import hazzlenut.services.twitch.actor.TokenGuardian.ServiceType
 import hazzlenut.services.twitch.actor.helper.Executor
 import log.effect.LogLevels
 import hazzlenut.services.twitch.actor.helper.Executor.dsl._
+import hazzlenut.services.twitch.actor.model.CommonMessages
+import zio.duration.Duration
 
+import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
 
 object Followers {
   val Name = "Followers"
 
   def props[F[_]: Monad: TwitchClientHandler: TwitchClient: HttpClient: UnmarshallerEntiy: LogProvider: Executor](
+    tokenGuardian: ActorRef,
     tokenHolder: ActorRef,
-    userInfo: ActorRef
+    pollingPeriod: FiniteDuration
   ): Props =
-    Props(new Followers[F](tokenHolder, userInfo))
+    Props(new Followers[F](tokenGuardian, tokenHolder, pollingPeriod))
 
   final case object RetrieveFollowers
   final case class ProvideFollowers(followers: Seq[Follower])
@@ -42,10 +48,12 @@ object Followers {
   // Merge list
   def mergeFollowers(existingFollowers: Seq[Follower],
                      newFollowers: Seq[Follower]): Seq[Follower] = {
-    def loop(existing: Seq[Follower], newFollowers: Seq[Follower]): Seq[Follower] =
+    def loop(existing: Seq[Follower],
+             newFollowers: Seq[Follower]): Seq[Follower] =
       newFollowers match {
         case Nil => existing
-        case h :: tail if existing exists (_.userName == h.userName) => loop(existing, tail)
+        case h :: tail if existing exists (_.userName == h.userName) =>
+          loop(existing, tail)
         case h :: tail => loop(existing :+ h, tail)
       }
     loop(existingFollowers, newFollowers)
@@ -53,20 +61,24 @@ object Followers {
 }
 
 class Followers[F[_]: Monad: TwitchClientHandler: TwitchClient: HttpClient: UnmarshallerEntiy: LogProvider: Executor](
+  tokenGuardian: ActorRef,
   tokenHolder: ActorRef,
-  userInfo: ActorRef
+  pollingPeriod: FiniteDuration
 ) extends Actor {
   implicit val system = context.system
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher
   import TokenHolderApi._
 
-  override def receive: Receive = Actor.emptyBehavior
+  def fetchToken(userInfo: ActorRef, expiredAccessToken: Boolean = false) =
+    fetchAccessToken(
+      waitingForToken(userInfo),
+      tokenHolder,
+      self,
+      expiredAccessToken
+    )
 
-  def fetchToken(expiredAccessToken: Boolean = false) =
-    fetchAccessToken(waitingForToken, tokenHolder, self, expiredAccessToken)
-
-  def waitingForToken: Receive = {
+  def waitingForToken(userInfo: ActorRef): Receive = {
     case ReplyAccessToken(accessToken) => {
       // Fetch the user from the UserInfo
       context.become(waitingForUserInfo(accessToken))
@@ -103,17 +115,37 @@ class Followers[F[_]: Monad: TwitchClientHandler: TwitchClient: HttpClient: Unma
       sender ! ProvideFollowers(followers)
     case PollFollowers =>
       poll(accessToken, user, cursor) pipeTo self
-    case ResultPollFollowers(newFollowers, cursor, total) =>
+    case ResultPollFollowers(newFollowers, cursor, total) => {
       context.become(
         pollFollowers(
           accessToken,
           user,
-          mergeFollowers(existingFollowers = followers, newFollowers = newFollowers),
+          mergeFollowers(
+            existingFollowers = followers,
+            newFollowers = newFollowers
+          ),
           cursor.some,
           total
         )
       )
+      system.scheduler.scheduleOnce(pollingPeriod){
+        self ! PollFollowers
+      }
+    }
     case Status.Failure(failure) =>
-      LogProvider.log[F](Name, LogLevels.Error, "failed to retrieve followers").unsafeRun
+      LogProvider
+        .log[F](Name, LogLevels.Error, "failed to retrieve followers")
+        .unsafeRun
+  }
+
+  override def receive: Receive = {
+    case CommonMessages.ApplicationStarted =>
+      context.become(waitingForUserInfo)
+      tokenGuardian ! RequireService(ServiceType.UserInfo)
+  }
+
+  def waitingForUserInfo: Receive = {
+    case ServiceProvide(ServiceType.UserInfo, userInfoRef) =>
+      fetchToken(userInfoRef)
   }
 }

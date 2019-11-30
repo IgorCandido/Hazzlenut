@@ -1,15 +1,11 @@
 Work list:
 - Implement twitch get followers (for now polling)
-    - Implemented with actor (Almost) -- Finish algorithm for merge list of followers
-    - Asks UserInfo (Done, not tested)
-    - Asks Token (Done, not tested)
-    - Returning FollowersReply, implement lense for Users following
-    - Implement a test/http action that allows to see our followers as manual test
     - When Token can't be renewed should die and be resurected when token starts again
 - Organize the tests on TwitchClientSpec - Remove tests that are not test the twitchClient but the usage of it into
     into their respect specs (component being tested)
 - Understand if we need to drop user info when the we get new OAuthToken (not refresh but re-authenticate)
 - Write the flow for get followers on a cycle and then publish those to whoever is interested (Events and likely actor on a schedule)
+- Update the Followers tests to use the stream with the followers instead of mutable state on the twitch client
 - Refactor twitch get followers (web sockets)
 - Write interested party that read follow events and pumps them into client (for now dummy showing on a webpage)
 - Write interested party that read follow events and pumps them into client (eventually websockets to a web page)

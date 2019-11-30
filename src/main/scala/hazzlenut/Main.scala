@@ -5,19 +5,18 @@ import akka.stream.ActorMaterializer
 import hazzlenut.akkaServer.Server
 import hazzlenut.akkaServer.Server.Configuration
 import hazzlenut.api.Authentication
-import hazzlenut.services.twitch.actor.TokenGuardian.Message.ApplicationStarted
-import hazzlenut.services.twitch.actor.helper.{
-  FollowersInitializer,
-  UserInfoInitializer
-}
+import hazzlenut.services.twitch.actor.helper.{FollowersInitializer, UserInfoInitializer}
+import hazzlenut.services.twitch.actor.model.CommonMessages.ApplicationStarted
 import hazzlenut.services.twitch.actor.{TokenGuardian, UserInfo}
 import zio.interop.catz._
 import hazzlenut.util.ZIORuntime._
+import scala.concurrent.duration._
 
 object Main extends App {
   implicit val system = ActorSystem()
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher
+  val pollingPeriodFollowers = 1 minute
 
   // TODO Think about using this actor system, same for akka http
   // and about import the twitch ZIO here.
@@ -26,7 +25,7 @@ object Main extends App {
     TokenGuardian.props[HazzleNutZIO](
       Seq(
         UserInfoInitializer.initializer[HazzleNutZIO],
-        FollowersInitializer.initializer
+        FollowersInitializer.initializer(pollingPeriodFollowers)
       )
     )
   )
