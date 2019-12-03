@@ -3,6 +3,7 @@ package hazzlenut.services.twitch.actor
 import akka.actor.{Actor, ActorRef, Props, Status}
 import akka.event.Logging.LogLevel
 import akka.pattern.pipe
+import akka.persistence.{PersistentActor, SnapshotOffer}
 import akka.stream.ActorMaterializer
 import cats.Monad
 import hazzlenut.handler.TwitchClientHandler
@@ -64,11 +65,14 @@ class Followers[F[_]: Monad: TwitchClientHandler: TwitchClient: HttpClient: Unma
   tokenGuardian: ActorRef,
   tokenHolder: ActorRef,
   pollingPeriod: FiniteDuration
-) extends Actor {
+) extends PersistentActor {
   implicit val system = context.system
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher
   import TokenHolderApi._
+
+  override val persistenceId: String = "Followers"
+  var cursor: Option[String] = None
 
   def fetchToken(userInfo: ActorRef, expiredAccessToken: Boolean = false) =
     fetchAccessToken(
@@ -138,7 +142,7 @@ class Followers[F[_]: Monad: TwitchClientHandler: TwitchClient: HttpClient: Unma
         .unsafeRun
   }
 
-  override def receive: Receive = {
+  override def receiveCommand: Receive = {
     case CommonMessages.ApplicationStarted =>
       context.become(waitingForUserInfo)
       tokenGuardian ! RequireService(ServiceType.UserInfo)
@@ -147,5 +151,9 @@ class Followers[F[_]: Monad: TwitchClientHandler: TwitchClient: HttpClient: Unma
   def waitingForUserInfo: Receive = {
     case ServiceProvide(ServiceType.UserInfo, userInfoRef) =>
       fetchToken(userInfoRef)
+  }
+
+  override def receiveRecover: Receive = {
+    case SnapshotOffer(_, c: String) => cursor = c.some
   }
 }

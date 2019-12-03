@@ -122,6 +122,8 @@ object TwitchClient {
   val USERS_URL = "https://api.twitch.tv/helix/users"
   val FOLLOWERS_URL =
     "https://api.twitch.tv/helix/users/follows?to_id=%s&direction=asc"
+  val FORWARD_CURSOR_NAME = "after"
+  
 
   object dsl {
     def retrieveUser[F[_]](accessToken: AccessToken)(
@@ -172,7 +174,7 @@ object TwitchClient {
         for {
           followers <- doRequestSeq[Follow](
             addQueryStringParameter(FOLLOWERS_URL.format(userId))(
-              "cursor",
+              FORWARD_CURSOR_NAME,
               cursor
             ),
             accessToken,
