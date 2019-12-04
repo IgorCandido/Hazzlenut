@@ -59,6 +59,8 @@ object Followers {
       }
     loop(existingFollowers, newFollowers)
   }
+
+  final case class CursorUpdated(cursor: String)
 }
 
 class Followers[F[_]: Monad: TwitchClientHandler: TwitchClient: HttpClient: UnmarshallerEntiy: LogProvider: Executor](
@@ -72,7 +74,7 @@ class Followers[F[_]: Monad: TwitchClientHandler: TwitchClient: HttpClient: Unma
   import TokenHolderApi._
 
   override val persistenceId: String = "Followers"
-  var cursor: Option[String] = None
+  var cursorState: Option[String] = None // Find out when to reset the cursorState (re-authentication maybe)
 
   def fetchToken(userInfo: ActorRef, expiredAccessToken: Boolean = false) =
     fetchAccessToken(
@@ -92,7 +94,7 @@ class Followers[F[_]: Monad: TwitchClientHandler: TwitchClient: HttpClient: Unma
 
   def waitingForUserInfo(accessToken: AccessToken): Receive = {
     case ProvideUser(user) => {
-      context.become(pollFollowers(accessToken, user, Seq.empty, None, 0))
+      context.become(pollFollowers(accessToken, user, Seq.empty, cursorState, 0))
       self ! PollFollowers
     }
   }
@@ -132,6 +134,7 @@ class Followers[F[_]: Monad: TwitchClientHandler: TwitchClient: HttpClient: Unma
           total
         )
       )
+      cursorState = cursor.some
       system.scheduler.scheduleOnce(pollingPeriod){
         self ! PollFollowers
       }
@@ -154,6 +157,7 @@ class Followers[F[_]: Monad: TwitchClientHandler: TwitchClient: HttpClient: Unma
   }
 
   override def receiveRecover: Receive = {
-    case SnapshotOffer(_, c: String) => cursor = c.some
+    case CursorUpdated(cursorValue) => cursorState = cursorValue.some
+    case SnapshotOffer(_, c: String) => cursorState = c.some
   }
 }
