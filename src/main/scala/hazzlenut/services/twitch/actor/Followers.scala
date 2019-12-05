@@ -1,6 +1,6 @@
 package hazzlenut.services.twitch.actor
 
-import akka.actor.{Actor, ActorRef, Props, Status}
+import akka.actor.{Actor, ActorRef, PoisonPill, Props, Status}
 import akka.event.Logging.LogLevel
 import akka.pattern.pipe
 import akka.persistence.{PersistentActor, SnapshotOffer}
@@ -61,6 +61,7 @@ object Followers {
   }
 
   final case class CursorUpdated(cursor: String)
+  final case object CursorCleaned
 }
 
 class Followers[F[_]: Monad: TwitchClientHandler: TwitchClient: HttpClient: UnmarshallerEntiy: LogProvider: Executor](
@@ -74,7 +75,17 @@ class Followers[F[_]: Monad: TwitchClientHandler: TwitchClient: HttpClient: Unma
   import TokenHolderApi._
 
   override val persistenceId: String = "Followers"
-  var cursorState: Option[String] = None // Find out when to reset the cursorState (re-authentication maybe)
+  var cursorState: Option[String] = None
+
+  def handlePoisonPill: Receive = {
+    case PoisonPill =>
+      persist(CursorCleaned){_ => // Actor being reset cleans cursor
+        cursorState = None
+      }
+  }
+
+  def withDefaultHandling(receiveHandler: Receive): Receive =
+    receiveHandler orElse handlePoisonPill
 
   def fetchToken(userInfo: ActorRef, expiredAccessToken: Boolean = false) =
     fetchAccessToken(
@@ -87,14 +98,14 @@ class Followers[F[_]: Monad: TwitchClientHandler: TwitchClient: HttpClient: Unma
   def waitingForToken(userInfo: ActorRef): Receive = {
     case ReplyAccessToken(accessToken) => {
       // Fetch the user from the UserInfo
-      context.become(waitingForUserInfo(accessToken))
+      context.become(withDefaultHandling(waitingForUserInfo(accessToken)))
       userInfo ! RetrieveUser
     }
   }
 
   def waitingForUserInfo(accessToken: AccessToken): Receive = {
     case ProvideUser(user) => {
-      context.become(pollFollowers(accessToken, user, Seq.empty, cursorState, 0))
+      context.become(withDefaultHandling(pollFollowers(accessToken, user, Seq.empty, cursorState, 0)))
       self ! PollFollowers
     }
   }
@@ -122,21 +133,23 @@ class Followers[F[_]: Monad: TwitchClientHandler: TwitchClient: HttpClient: Unma
     case PollFollowers =>
       poll(accessToken, user, cursor) pipeTo self
     case ResultPollFollowers(newFollowers, cursor, total) => {
-      context.become(
-        pollFollowers(
-          accessToken,
-          user,
-          mergeFollowers(
-            existingFollowers = followers,
-            newFollowers = newFollowers
-          ),
-          cursor.some,
-          total
+      persist(CursorUpdated(cursor)){ cursorUpdated =>
+        context.become(withDefaultHandling(
+          pollFollowers(
+            accessToken,
+            user,
+            mergeFollowers(
+              existingFollowers = followers,
+              newFollowers = newFollowers
+            ),
+            cursorUpdated.cursor.some,
+            total
+          ))
         )
-      )
-      cursorState = cursor.some
-      system.scheduler.scheduleOnce(pollingPeriod){
-        self ! PollFollowers
+        cursorState = cursorUpdated.cursor.some
+        system.scheduler.scheduleOnce(pollingPeriod){
+          self ! PollFollowers
+        }
       }
     }
     case Status.Failure(failure) =>
@@ -145,10 +158,14 @@ class Followers[F[_]: Monad: TwitchClientHandler: TwitchClient: HttpClient: Unma
         .unsafeRun
   }
 
+  private def startActor() = {
+    context.become(withDefaultHandling(waitingForUserInfo))
+    tokenGuardian ! RequireService(ServiceType.UserInfo)
+  }
+
   override def receiveCommand: Receive = {
     case CommonMessages.ApplicationStarted =>
-      context.become(waitingForUserInfo)
-      tokenGuardian ! RequireService(ServiceType.UserInfo)
+      startActor()
   }
 
   def waitingForUserInfo: Receive = {
@@ -156,8 +173,15 @@ class Followers[F[_]: Monad: TwitchClientHandler: TwitchClient: HttpClient: Unma
       fetchToken(userInfoRef)
   }
 
-  override def receiveRecover: Receive = {
-    case CursorUpdated(cursorValue) => cursorState = cursorValue.some
-    case SnapshotOffer(_, c: String) => cursorState = c.some
+  override def receiveRecover: Receive = { // Fully aware that the actor will require multiple times the UserInfo service
+    case CursorUpdated(cursorValue) => {
+      cursorState = cursorValue.some
+      startActor()
+    }
+    case SnapshotOffer(_, c: String) => {
+      cursorState = c.some
+      startActor()
+    }
+    case CursorCleaned => cursorState = None
   }
 }
