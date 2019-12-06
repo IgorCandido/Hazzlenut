@@ -1,7 +1,4 @@
 Work list:
-- Implement twitch get followers (for now polling)
-    - When Token can't be renewed should die and be resurected when token starts again
-- Figure out what happens when an actor is moved, can the Guardian know about it and send it the ApplicationStarted again?
 - Organize the tests on TwitchClientSpec - Remove tests that are not test the twitchClient but the usage of it into
     into their respect specs (component being tested)
 - Understand if we need to drop user info when the we get new OAuthToken (not refresh but re-authenticate)
@@ -10,7 +7,7 @@ Work list:
 - Refactor twitch get followers (web sockets)
 - Write interested party that read follow events and pumps them into client (for now dummy showing on a webpage)
 - Write interested party that read follow events and pumps them into client (eventually websockets to a web page)
-
+- Make the TokenGuardian a supervisor aware of failures and allow for service actors to rejoin and recreate fallen services
 
 Future list:
 
