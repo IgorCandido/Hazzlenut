@@ -32,6 +32,7 @@ val circeCore = "io.circe" %% "circe-core" % circeVersion
 val circeGeneric = "io.circe" %% "circe-generic" % circeVersion
 val akkaStreamTestKit = "com.typesafe.akka" %% "akka-stream-testkit" % "2.5.19"
 val akkaHttpTestKit = "com.typesafe.akka" %% "akka-http-testkit" % "10.1.8"
+val levelDbJni = "org.fusesource.leveldbjni" % "leveldbjni-all" % "1.8" % Test
 
 libraryDependencies ++= Seq(
   cats,
@@ -54,7 +55,8 @@ libraryDependencies ++= Seq(
   `akka-http-spray-json`,
   `log-effect`,
   `log-effect-zio`,
-  akkaPersistence
+  akkaPersistence,
+  levelDbJni
 )
 
 mainClass in assembly := Some("hazzlenut.Main")

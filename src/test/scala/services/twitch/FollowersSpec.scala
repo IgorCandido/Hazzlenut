@@ -1,31 +1,20 @@
 package services.twitch
 
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.{ActorRef, ActorSystem, PoisonPill}
 import akka.testkit.{ImplicitSender, TestKit, TestProbe}
 import cats.MonadError
 import hazzlenut.errors.HazzlenutError
 import hazzlenut.services.twitch.actor.Followers
 import hazzlenut.services.twitch.actor.Followers.Follower
-import hazzlenut.services.twitch.actor.TokenGuardian.Message.{
-  RequireService,
-  ServiceProvide
-}
+import hazzlenut.services.twitch.actor.TokenGuardian.Message.{RequireService, ServiceProvide}
 import hazzlenut.services.twitch.actor.TokenGuardian.ServiceType
-import hazzlenut.services.twitch.actor.TokenHolder.{
-  AskAccessToken,
-  ReplyAccessToken
-}
+import hazzlenut.services.twitch.actor.TokenHolder.{AskAccessToken, ReplyAccessToken}
 import hazzlenut.services.twitch.actor.UserInfo.{ProvideUser, RetrieveUser}
 import hazzlenut.services.twitch.actor.adapter.TwitchClient
 import hazzlenut.services.twitch.actor.model.CommonMessages.ApplicationStarted
 import hazzlenut.services.twitch.adapters.AccessToken
 import hazzlenut.services.twitch.helper.CommonReferences
-import hazzlenut.services.twitch.model.{
-  Follow,
-  Pagination,
-  TwitchSeqWithMeta,
-  User
-}
+import hazzlenut.services.twitch.model.{Follow, Pagination, TwitchSeqWithMeta, User}
 import org.scalatest.{Matchers, WordSpecLike}
 import utils.{AccessTokenGen, FollowersReplyGen, TestIO, UserGen}
 import utils.TestIO._
@@ -156,7 +145,6 @@ class FollowersSpec
       final case class FollowerCall(cursor: Option[String])
 
       implicit val twitchClient = new TwitchClient[TestIO] {
-
         var followersCalledTimes = 0
         val cursorValues = mutable.Buffer(
           "first",
@@ -222,5 +210,75 @@ class FollowersSpec
       //TODO: Eventually look into the stream producer to check if the followers were properly registered
     }
 
+    "Killing the Followers actor and restarting with state should trigger GetUserInfo" in {
+      implicit val system = ActorSystem()
+      val tokenGuardian = TestProbe()
+      val tokenHolder = TestProbe()
+      val userInfo = TestProbe()
+      final case class FollowerCall(cursor: Option[String])
+
+      implicit val twitchClient = new TwitchClient[TestIO] {
+        var followersCalledTimes = 0
+        val cursorValues = mutable.Buffer(
+          "first",
+          "second",
+          "third",
+          "forth",
+          "fifth",
+          "first",
+          "second",
+          "third",
+          "forth",
+          "fifth"
+        )
+        val calls = mutable.Buffer.empty[FollowerCall]
+
+        override def fromOption[Out](optionOf: Option[Out],
+                                     hazzlenutError: HazzlenutError)(
+                                      implicit monadError: MonadError[TestIO, HazzlenutError]
+                                    ): TestIO[Out] = ???
+
+        override def user(accessToken: AccessToken)(
+          implicit commonReferences: CommonReferences[TestIO],
+          monadErrorThrowable: MonadError[TestIO, HazzlenutError]
+        ): TestIO[User] = ???
+
+        override def followers(accessToken: AccessToken,
+                               userId: String,
+                               cursor: Option[String])(
+                                implicit commonReferences: CommonReferences[TestIO],
+                                monadErrorThrowable: MonadError[TestIO, HazzlenutError]
+                              ): TestIO[TwitchSeqWithMeta[Follow]] = {
+          calls += FollowerCall(cursor)
+          TestIO(
+            Right(
+              FollowersReplyGen.getSample
+                .copy(pagination = Pagination(cursorValues.remove(0)))
+            )
+          )
+        }
+      }
+
+      val followers =
+        system.actorOf(
+          Followers
+            .props[TestIO](tokenGuardian.ref, tokenHolder.ref, 500 milliseconds)
+        )
+
+      startFollowers(followers, userInfo, tokenGuardian, tokenHolder)
+
+
+
+      followers ! ApplicationStarted
+      followers ! PoisonPill
+
+//      val followers2 =
+//        system.actorOf(
+//          Followers
+//            .props[TestIO](tokenGuardian.ref, tokenHolder.ref, 500 milliseconds)
+//        )
+
+      tokenGuardian.expectMsg(30 seconds, RequireService(ServiceType.UserInfo))
+    }
   }
 }

@@ -1,7 +1,6 @@
 Work list:
-- Organize the tests on TwitchClientSpec - Remove tests that are not test the twitchClient but the usage of it into
-    into their respect specs (component being tested)
-- Understand if we need to drop user info when the we get new OAuthToken (not refresh but re-authenticate)
+- Use another message than PoisonPill to signal Terminate on Persistent actors (Followers for now)
+- Write tests to make sure that persisted state of the Followers actor is properly managed
 - Write the flow for get followers on a cycle and then publish those to whoever is interested (Events and likely actor on a schedule)
 - Update the Followers tests to use the stream with the followers instead of mutable state on the twitch client
 - Refactor twitch get followers (web sockets)

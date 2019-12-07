@@ -117,7 +117,7 @@ class TwitchClientSpec extends WordSpec with Matchers with BeforeAndAfterAll {
       |}
       |""".stripMargin
 
-  "TwitchClient Get Followers" should {
+  "TwitchClient Get User" should {
     "get user when access token provided" in {
       implicit val httpClient = TestIO.httpClientSucess(defaultUserReply)
 
@@ -316,5 +316,4 @@ class TwitchClientSpec extends WordSpec with Matchers with BeforeAndAfterAll {
       )
     }
   }
-
 }

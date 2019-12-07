@@ -30,16 +30,19 @@ import scala.concurrent.{ExecutionContext, Future}
 object Followers {
   val Name = "Followers"
 
-  def props[F[_]: Monad: TwitchClientHandler: TwitchClient: HttpClient: UnmarshallerEntiy: LogProvider: Executor](
-    tokenGuardian: ActorRef,
-    tokenHolder: ActorRef,
-    pollingPeriod: FiniteDuration
-  ): Props =
+  def props[F[_] : Monad : TwitchClientHandler : TwitchClient : HttpClient : UnmarshallerEntiy : LogProvider : Executor](
+                                                                                                                          tokenGuardian: ActorRef,
+                                                                                                                          tokenHolder: ActorRef,
+                                                                                                                          pollingPeriod: FiniteDuration
+                                                                                                                        ): Props =
     Props(new Followers[F](tokenGuardian, tokenHolder, pollingPeriod))
 
   final case object RetrieveFollowers
+
   final case class ProvideFollowers(followers: Seq[Follower])
+
   final case object PollFollowers
+
   final case class ResultPollFollowers(followers: Seq[Follower],
                                        cursor: String,
                                        total: Long)
@@ -57,29 +60,33 @@ object Followers {
           loop(existing, tail)
         case h :: tail => loop(existing :+ h, tail)
       }
+
     loop(existingFollowers, newFollowers)
   }
 
   final case class CursorUpdated(cursor: String)
+
   final case object CursorCleaned
+
 }
 
-class Followers[F[_]: Monad: TwitchClientHandler: TwitchClient: HttpClient: UnmarshallerEntiy: LogProvider: Executor](
-  tokenGuardian: ActorRef,
-  tokenHolder: ActorRef,
-  pollingPeriod: FiniteDuration
-) extends PersistentActor {
+class Followers[F[_] : Monad : TwitchClientHandler : TwitchClient : HttpClient : UnmarshallerEntiy : LogProvider : Executor](
+                                                                                                                              tokenGuardian: ActorRef,
+                                                                                                                              tokenHolder: ActorRef,
+                                                                                                                              pollingPeriod: FiniteDuration
+                                                                                                                            ) extends PersistentActor {
   implicit val system = context.system
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher
+
   import TokenHolderApi._
 
-  override val persistenceId: String = "Followers"
+  override val persistenceId: String = Followers.Name
   var cursorState: Option[String] = None
 
   def handlePoisonPill: Receive = {
     case PoisonPill =>
-      persist(CursorCleaned){_ => // Actor being reset cleans cursor
+      persist(CursorCleaned) { _ => // Actor being reset cleans cursor
         cursorState = None
       }
   }
@@ -120,7 +127,7 @@ class Followers[F[_]: Monad: TwitchClientHandler: TwitchClient: HttpClient: Unma
           followers.seq.map(f => Follower(f.to_name, f.followed_at)),
           followers.pagination.cursor,
           followers.total
-      )
+        )
     )
 
   def pollFollowers(accessToken: AccessToken,
@@ -133,7 +140,7 @@ class Followers[F[_]: Monad: TwitchClientHandler: TwitchClient: HttpClient: Unma
     case PollFollowers =>
       poll(accessToken, user, cursor) pipeTo self
     case ResultPollFollowers(newFollowers, cursor, total) => {
-      persist(CursorUpdated(cursor)){ cursorUpdated =>
+      persist(CursorUpdated(cursor)) { cursorUpdated =>
         context.become(withDefaultHandling(
           pollFollowers(
             accessToken,
@@ -147,7 +154,7 @@ class Followers[F[_]: Monad: TwitchClientHandler: TwitchClient: HttpClient: Unma
           ))
         )
         cursorState = cursorUpdated.cursor.some
-        system.scheduler.scheduleOnce(pollingPeriod){
+        system.scheduler.scheduleOnce(pollingPeriod) {
           self ! PollFollowers
         }
       }
@@ -163,10 +170,10 @@ class Followers[F[_]: Monad: TwitchClientHandler: TwitchClient: HttpClient: Unma
     tokenGuardian ! RequireService(ServiceType.UserInfo)
   }
 
-  override def receiveCommand: Receive = {
+  override def receiveCommand: Receive = withDefaultHandling({
     case CommonMessages.ApplicationStarted =>
       startActor()
-  }
+  })
 
   def waitingForUserInfo: Receive = {
     case ServiceProvide(ServiceType.UserInfo, userInfoRef) =>
