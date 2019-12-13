@@ -1,6 +1,6 @@
 package services.twitch
 
-import akka.actor.{ActorRef, ActorSystem, PoisonPill}
+import akka.actor.{ActorRef, ActorSystem, Kill, PoisonPill}
 import akka.testkit.{ImplicitSender, TestKit, TestProbe}
 import cats.MonadError
 import hazzlenut.errors.HazzlenutError
@@ -11,7 +11,7 @@ import hazzlenut.services.twitch.actor.TokenGuardian.ServiceType
 import hazzlenut.services.twitch.actor.TokenHolder.{AskAccessToken, ReplyAccessToken}
 import hazzlenut.services.twitch.actor.UserInfo.{ProvideUser, RetrieveUser}
 import hazzlenut.services.twitch.actor.adapter.TwitchClient
-import hazzlenut.services.twitch.actor.model.CommonMessages.ApplicationStarted
+import hazzlenut.services.twitch.actor.model.CommonMessages.{ApplicationStarted, KillService}
 import hazzlenut.services.twitch.adapters.AccessToken
 import hazzlenut.services.twitch.helper.CommonReferences
 import hazzlenut.services.twitch.model.{Follow, Pagination, TwitchSeqWithMeta, User}
@@ -267,16 +267,9 @@ class FollowersSpec
 
       startFollowers(followers, userInfo, tokenGuardian, tokenHolder)
 
+      Thread.sleep(1000)
 
-
-      followers ! ApplicationStarted
-      followers ! PoisonPill
-
-//      val followers2 =
-//        system.actorOf(
-//          Followers
-//            .props[TestIO](tokenGuardian.ref, tokenHolder.ref, 500 milliseconds)
-//        )
+      followers ! Kill
 
       tokenGuardian.expectMsg(30 seconds, RequireService(ServiceType.UserInfo))
     }

@@ -1,12 +1,13 @@
 Work list:
-- Use another message than PoisonPill to signal Terminate on Persistent actors (Followers for now)
+- Make the TokenGuardian a supervisor aware of failures and allow for service actors to rejoin and recreate fallen services
 - Write tests to make sure that persisted state of the Followers actor is properly managed
+    - Guarantee that Persistent actor restarted on a failure case is automatically started
+    - When Persistent actor is properly killed (terminated) do not do an auto start (require the application start message)
 - Write the flow for get followers on a cycle and then publish those to whoever is interested (Events and likely actor on a schedule)
 - Update the Followers tests to use the stream with the followers instead of mutable state on the twitch client
 - Refactor twitch get followers (web sockets)
 - Write interested party that read follow events and pumps them into client (for now dummy showing on a webpage)
 - Write interested party that read follow events and pumps them into client (eventually websockets to a web page)
-- Make the TokenGuardian a supervisor aware of failures and allow for service actors to rejoin and recreate fallen services
 
 Future list:
 
