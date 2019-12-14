@@ -175,7 +175,7 @@ class Followers[F[_]: Monad: TwitchClientHandler: TwitchClient: HttpClient: Unma
         .unsafeRun
   }
 
-  private def bootStrap(): Receive = {
+  private def bootStrap: Receive = {
     case Bootstrap => startActor()
   }
 
@@ -199,12 +199,12 @@ class Followers[F[_]: Monad: TwitchClientHandler: TwitchClient: HttpClient: Unma
     : Receive = { // Fully aware that the actor will require multiple times the UserInfo service
     case CursorUpdated(cursorValue) => {
       cursorState = cursorValue.some
-      bootStrap()
+      context.become(bootStrap)
       self ! Bootstrap
     }
     case SnapshotOffer(_, c: String) => {
       cursorState = c.some
-      bootStrap()
+      context.become(bootStrap)
       self ! Bootstrap
     }
     case CursorCleaned => {

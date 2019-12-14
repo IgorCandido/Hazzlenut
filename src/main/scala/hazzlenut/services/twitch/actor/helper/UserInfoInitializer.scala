@@ -1,6 +1,6 @@
 package hazzlenut.services.twitch.actor.helper
 
-import akka.actor.{ActorContext, ActorRef, ActorSystem}
+import akka.actor.{ActorContext, ActorRef, ActorSystem, Props}
 import cats.Monad
 import hazzlenut.HazzleNutZIO
 import hazzlenut.handler.TwitchClientHandler
@@ -13,6 +13,7 @@ import hazzlenut.util.ZIORuntime._
 object UserInfoInitializer {
   implicit final case object akkaUserInfoInitializer extends UserInfoInitializer[HazzleNutZIO] {
       override def initializeUserInfo(
+        propsF: Props => Props,
         tokenGuardian: ActorRef,
         tokenHolder: ActorRef
       )(implicit system: ActorSystem,
@@ -41,7 +42,7 @@ object UserInfoInitializer {
 }
 
 trait UserInfoInitializer[F[_]] {
-  def initializeUserInfo(tokenGuardian: ActorRef, tokenHolder: ActorRef)(
+  def initializeUserInfo(propsF: Props => Props, tokenGuardian: ActorRef, tokenHolder: ActorRef)(
     implicit system: ActorSystem,
     twitchClientHandler: TwitchClientHandler[F],
     twitchClient: TwitchClient[F],

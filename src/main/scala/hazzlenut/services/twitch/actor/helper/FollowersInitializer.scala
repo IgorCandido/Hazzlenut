@@ -1,17 +1,17 @@
 package hazzlenut.services.twitch.actor.helper
 
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.{ActorRef, ActorSystem, Props}
 import cats.Monad
 import hazzlenut.HazzleNutZIO
-import hazzlenut.services.twitch.actor.{Followers, TokenGuardian}
 import hazzlenut.services.twitch.actor.TokenGuardian.ServiceInitializer
+import hazzlenut.services.twitch.actor.{Followers, TokenGuardian}
 
 import scala.concurrent.duration.FiniteDuration
 
 trait FollowersInitializer[F[_]] {
   def initializeFollowers(
     pollingPeriod: FiniteDuration
-  )(tokenGuardian: ActorRef, tokenHolder: ActorRef)(
+  )(propsF: Props => Props, tokenGuardian: ActorRef, tokenHolder: ActorRef)(
     implicit system: ActorSystem,
     monad: Monad[F],
     executor: Executor[F]
@@ -21,14 +21,18 @@ trait FollowersInitializer[F[_]] {
 object FollowersInitializer {
   implicit object akkaFollowersInitializer
       extends FollowersInitializer[HazzleNutZIO] {
-    override def initializeFollowers(pollingPeriod: FiniteDuration)(
-      tokenGuardian: ActorRef,
-      tokenHolder: ActorRef
-    )(implicit system: ActorSystem,
+    override def initializeFollowers(
+      pollingPeriod: FiniteDuration
+    )(propsF: Props => Props, tokenGuardian: ActorRef, tokenHolder: ActorRef)(
+      implicit system: ActorSystem,
       monad: Monad[HazzleNutZIO],
-      executor: Executor[HazzleNutZIO]): ActorRef =
+      executor: Executor[HazzleNutZIO]
+    ): ActorRef =
       system.actorOf(
-        Followers.props[HazzleNutZIO](tokenGuardian, tokenHolder, pollingPeriod)
+        propsF(
+          Followers
+            .props[HazzleNutZIO](tokenGuardian, tokenHolder, pollingPeriod)
+        )
       )
   }
 
@@ -36,9 +40,9 @@ object FollowersInitializer {
     implicit followersInitializer: FollowersInitializer[F]
   ): FollowersInitializer[F] = followersInitializer
 
-  def initializer[F[_]: FollowersInitializer](pollingPeriod: FiniteDuration)(implicit system: ActorSystem,
-                                              monad: Monad[F],
-                                              executor: Executor[F]) =
+  def initializer[F[_]: FollowersInitializer](
+    pollingPeriod: FiniteDuration
+  )(implicit system: ActorSystem, monad: Monad[F], executor: Executor[F]) =
     ServiceInitializer(
       TokenGuardian.ServiceType.Followers,
       FollowersInitializer[F].initializeFollowers(pollingPeriod) _

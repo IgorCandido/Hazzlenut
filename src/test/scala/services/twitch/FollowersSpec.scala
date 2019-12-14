@@ -1,10 +1,11 @@
 package services.twitch
 
-import akka.actor.{ActorRef, ActorSystem, Kill, PoisonPill}
-import akka.testkit.{ImplicitSender, TestKit, TestProbe}
+import akka.actor.SupervisorStrategy.Restart
+import akka.actor.{Actor, ActorRef, ActorSystem, Kill, OneForOneStrategy, PoisonPill, Props}
+import akka.testkit.{ImplicitSender, TestActorRef, TestKit, TestProbe}
 import cats.MonadError
 import hazzlenut.errors.HazzlenutError
-import hazzlenut.services.twitch.actor.Followers
+import hazzlenut.services.twitch.actor.{Followers, TokenGuardian}
 import hazzlenut.services.twitch.actor.Followers.Follower
 import hazzlenut.services.twitch.actor.TokenGuardian.Message.{RequireService, ServiceProvide}
 import hazzlenut.services.twitch.actor.TokenGuardian.ServiceType
@@ -235,8 +236,8 @@ class FollowersSpec
 
         override def fromOption[Out](optionOf: Option[Out],
                                      hazzlenutError: HazzlenutError)(
-                                      implicit monadError: MonadError[TestIO, HazzlenutError]
-                                    ): TestIO[Out] = ???
+          implicit monadError: MonadError[TestIO, HazzlenutError]
+        ): TestIO[Out] = ???
 
         override def user(accessToken: AccessToken)(
           implicit commonReferences: CommonReferences[TestIO],
@@ -246,9 +247,9 @@ class FollowersSpec
         override def followers(accessToken: AccessToken,
                                userId: String,
                                cursor: Option[String])(
-                                implicit commonReferences: CommonReferences[TestIO],
-                                monadErrorThrowable: MonadError[TestIO, HazzlenutError]
-                              ): TestIO[TwitchSeqWithMeta[Follow]] = {
+          implicit commonReferences: CommonReferences[TestIO],
+          monadErrorThrowable: MonadError[TestIO, HazzlenutError]
+        ): TestIO[TwitchSeqWithMeta[Follow]] = {
           calls += FollowerCall(cursor)
           TestIO(
             Right(
@@ -259,11 +260,14 @@ class FollowersSpec
         }
       }
 
-      val followers =
-        system.actorOf(
-          Followers
-            .props[TestIO](tokenGuardian.ref, tokenHolder.ref, 500 milliseconds)
-        )
+
+      val a = system.actorOf(Props(new ActorT))
+      a.tell(ActorT.CreateFollowers(TokenGuardian.injectSupervisor(
+        Followers
+          .props[TestIO](tokenGuardian.ref, tokenHolder.ref, 500 milliseconds)
+      )), testActor)
+
+      val followers: ActorRef = receiveOne(1 second).asInstanceOf[ActorRef]
 
       startFollowers(followers, userInfo, tokenGuardian, tokenHolder)
 
@@ -272,6 +276,24 @@ class FollowersSpec
       followers ! Kill
 
       tokenGuardian.expectMsg(30 seconds, RequireService(ServiceType.UserInfo))
+    }
+  }
+
+  object ActorT {
+    final case class CreateFollowers(props: Props)
+  }
+
+  class ActorT extends Actor {
+    import ActorT._
+    override def receive: Receive = {
+      case CreateFollowers(props) => sender ! createFollowers(props)
+    }
+
+    def createFollowers(props: Props): ActorRef =
+      context.actorOf(props)
+
+    override val supervisorStrategy = OneForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1 minute) {
+      case _ => Restart
     }
   }
 }

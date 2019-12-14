@@ -1,6 +1,6 @@
 package services.twitch
 
-import akka.actor.{ActorContext, ActorRef, ActorSystem}
+import akka.actor.{ActorContext, ActorRef, ActorSystem, Props}
 import akka.testkit.{TestKit, TestProbe}
 import cats.Monad
 import cats.implicits._
@@ -273,6 +273,7 @@ class TokenGuardianSpec
         var numberUserInfoInitialized = 0
 
         override def initializeUserInfo(
+          propf: Props => Props,
           tokenGuardian: ActorRef,
           tokenHolder: ActorRef
         )(implicit system: ActorSystem,
@@ -332,6 +333,7 @@ class TokenGuardianSpec
       implicit val userInfoInitalizer = new UserInfoInitializer[TestIO] {
         var numberUserInfoInitialized = 0
         override def initializeUserInfo(
+          propf: Props => Props,
           tokenGuardian: ActorRef,
           tokenHolder: ActorRef
         )(implicit context: ActorSystem,
@@ -381,12 +383,12 @@ class TokenGuardianSpec
       val userInfo = TestProbe()
 
       import TokenGuardian.ServiceType._
-      val userInfoInitializer = ServiceInitializer(UserInfo, (_, _) => userInfo.ref)
+      val userInfoInitializer = ServiceInitializer(UserInfo, (_, _, _) => userInfo.ref)
 
       val followers = TestProbe()
 
       import TokenGuardian.ServiceType._
-      val followersInitializer = ServiceInitializer(Followers, (_, _) => followers.ref)
+      val followersInitializer = ServiceInitializer(Followers, (_, _, _) => followers.ref)
 
       var authenticateUser = 0
 

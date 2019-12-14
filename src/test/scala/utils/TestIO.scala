@@ -1,17 +1,12 @@
 package utils
-import akka.actor.{ActorContext, ActorRef, ActorSystem}
+import akka.actor.{ActorContext, ActorRef, ActorSystem, Props}
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.unmarshalling.{Unmarshal, Unmarshaller}
 import akka.stream.Materializer
 import cats.implicits._
 import cats.{Id, Monad, MonadError}
 import hazzlenut.errors.HazzlenutError
-import hazzlenut.errors.HazzlenutError.{
-  ThrowableError,
-  UnableToConnect,
-  UnableToFetchFollowers,
-  UnableToFetchUserInformation
-}
+import hazzlenut.errors.HazzlenutError.{ThrowableError, UnableToConnect, UnableToFetchFollowers, UnableToFetchUserInformation}
 import hazzlenut.handler.{AuthenticationHandler, TwitchClientHandler}
 import hazzlenut.services.twitch._
 import hazzlenut.services.twitch.actor.UserInfo
@@ -460,7 +455,7 @@ trait TestIOUserInfoInitializer {
 
   def userInfoInitializerWithActor(actorRefGenerator: UserInfoInitializerType) =
     new UserInfoInitializer[TestIO] {
-      override def initializeUserInfo(tokenGuardian: ActorRef, tokenHolder: ActorRef)(
+      override def initializeUserInfo(propf: Props => Props, tokenGuardian: ActorRef, tokenHolder: ActorRef)(
         implicit context: ActorSystem,
         twitchClientHandler: TwitchClientHandler[TestIO],
         twitchClient: TwitchClient[TestIO],

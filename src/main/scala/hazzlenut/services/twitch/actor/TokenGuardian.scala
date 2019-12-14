@@ -1,27 +1,29 @@
 package hazzlenut.services.twitch.actor
 
-import akka.actor.{Actor, ActorRef, PoisonPill, Props}
+import akka.actor.SupervisorStrategy.Restart
+import akka.actor.{Actor, ActorRef, OneForOneStrategy, PoisonPill, Props, SupervisorStrategy}
+import akka.pattern.{BackoffOpts, BackoffSupervisor}
 import cats.Monad
 import hazzlenut.errors.HazzlenutError
 import hazzlenut.handler.{AuthenticationHandler, TwitchClientHandler}
-import hazzlenut.services.twitch.actor.TokenGuardian.{Service, ServiceInitializer, ServiceType}
 import hazzlenut.services.twitch.actor.TokenGuardian.Message._
+import hazzlenut.services.twitch.actor.TokenGuardian.{Service, ServiceInitializer, ServiceType}
 import hazzlenut.services.twitch.actor.adapter.TwitchClient
-import hazzlenut.services.twitch.adapters.AccessToken
-import hazzlenut.services.twitch.actor.helper.{Executor, TokenHolderInitializer, UserInfoInitializer}
-import hazzlenut.util.{HttpClient, LogProvider}
-import log.effect.LogLevels.Debug
-import cats.implicits._
-import hazzlenut.errors.HazzlenutError.UnableToAuthenticate
 import hazzlenut.services.twitch.actor.helper.Executor.dsl._
+import hazzlenut.services.twitch.actor.helper.{Executor, TokenHolderInitializer}
 import hazzlenut.services.twitch.actor.model.CommonMessages
 import hazzlenut.services.twitch.actor.model.CommonMessages.ApplicationStarted
-import log.effect.{LogLevel, LogLevels}
+import hazzlenut.services.twitch.adapters.AccessToken
+import hazzlenut.util.{HttpClient, LogProvider}
+import log.effect.LogLevels
+import log.effect.LogLevels.Debug
+
+import scala.concurrent.duration._
 
 object TokenGuardian {
   val Name = "TokenGuardian"
 
-  type Initializer = (ActorRef, ActorRef) => ActorRef
+  type Initializer = (Props => Props, ActorRef, ActorRef) => ActorRef
 
   object Message {
     case object CantRenewToken
@@ -46,6 +48,23 @@ object TokenGuardian {
     tokenHolderInitializer: TokenHolderInitializer[F],
   ) =
     Props(new TokenGuardian(serviceInitializers))
+
+  val injectSupervisor: Props => Props = { childProps =>
+    BackoffSupervisor.props(
+      BackoffOpts
+        .onFailure(
+          childProps,
+          childName = "myEcho",
+          minBackoff = 30 milliseconds,
+          maxBackoff = 1 seconds,
+          randomFactor = 0.2 // adds 20% "noise" to vary the intervals slightly
+        )
+        .withSupervisorStrategy(OneForOneStrategy() {
+          case _: Exception =>
+            SupervisorStrategy.Restart // Dangerous to always restart for any exception
+        })
+    )
+  }
 }
 
 class TokenGuardian[F[_]: TwitchClientHandler: TwitchClient: HttpClient: LogProvider: Executor](
@@ -54,6 +73,16 @@ class TokenGuardian[F[_]: TwitchClientHandler: TwitchClient: HttpClient: LogProv
   tokenHolderInitializer: TokenHolderInitializer[F],
   monad: Monad[F])
     extends Actor {
+
+  override val supervisorStrategy =
+    OneForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1 minute) {
+      case _ => Restart
+    }
+
+  override def receive: Receive = {
+    case ApplicationStarted =>
+      authenticateUserAgainAndWaitForResult()
+  }
 
   def poisonAllServices(services: Seq[Service]): Unit =
     services.foreach(_.actorRef ! PoisonPill)
@@ -64,7 +93,14 @@ class TokenGuardian[F[_]: TwitchClientHandler: TwitchClient: HttpClient: LogProv
     serviceInitializers: Seq[ServiceInitializer]
   ): Seq[Service] =
     serviceInitializers.map { sI =>
-      Service(sI.serviceType, sI.initializer(tokenGuardian, tokenHolder))
+      Service(
+        sI.serviceType,
+        sI.initializer(
+          TokenGuardian.injectSupervisor,
+          tokenGuardian,
+          tokenHolder
+        )
+      )
     }
 
   def fulfillService(serviceType: ServiceType, services: Seq[Service]): Unit =
@@ -141,10 +177,5 @@ class TokenGuardian[F[_]: TwitchClientHandler: TwitchClient: HttpClient: LogProv
     // Asking for authentication
     context.become(waitingForUserAuthentication())
     authenticationHandler.reAuthenticate()
-  }
-
-  override def receive: Receive = {
-    case ApplicationStarted =>
-      authenticateUserAgainAndWaitForResult()
   }
 }
