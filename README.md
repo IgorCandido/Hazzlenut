@@ -1,5 +1,6 @@
 Work list:
 - Make the TokenGuardian a supervisor aware of failures and allow for service actors to rejoin and recreate fallen services
+- Need to understand how to use BackOffSupervisor
 - Write tests to make sure that persisted state of the Followers actor is properly managed
     - Guarantee that Persistent actor restarted on a failure case is automatically started
     - When Persistent actor is properly killed (terminated) do not do an auto start (require the application start message)
