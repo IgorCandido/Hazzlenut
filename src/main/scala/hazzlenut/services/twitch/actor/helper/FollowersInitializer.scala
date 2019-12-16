@@ -1,6 +1,6 @@
 package hazzlenut.services.twitch.actor.helper
 
-import akka.actor.{ActorRef, ActorSystem, Props}
+import akka.actor.{ActorContext, ActorRef, ActorSystem, Props}
 import cats.Monad
 import hazzlenut.HazzleNutZIO
 import hazzlenut.services.twitch.actor.TokenGuardian.ServiceInitializer
@@ -11,7 +11,7 @@ import scala.concurrent.duration.FiniteDuration
 trait FollowersInitializer[F[_]] {
   def initializeFollowers(
     pollingPeriod: FiniteDuration
-  )(propsF: Props => Props, tokenGuardian: ActorRef, tokenHolder: ActorRef)(
+  )(parent: ActorContext, tokenGuardian: ActorRef, tokenHolder: ActorRef)(
     implicit system: ActorSystem,
     monad: Monad[F],
     executor: Executor[F]
@@ -23,16 +23,14 @@ object FollowersInitializer {
       extends FollowersInitializer[HazzleNutZIO] {
     override def initializeFollowers(
       pollingPeriod: FiniteDuration
-    )(propsF: Props => Props, tokenGuardian: ActorRef, tokenHolder: ActorRef)(
+    )(parent: ActorContext, tokenGuardian: ActorRef, tokenHolder: ActorRef)(
       implicit system: ActorSystem,
       monad: Monad[HazzleNutZIO],
       executor: Executor[HazzleNutZIO]
     ): ActorRef =
-      system.actorOf(
-        propsF(
+      parent.actorOf(
           Followers
             .props[HazzleNutZIO](tokenGuardian, tokenHolder, pollingPeriod)
-        )
       )
   }
 

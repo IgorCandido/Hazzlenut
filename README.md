@@ -1,9 +1,7 @@
 Work list:
-- Make the TokenGuardian a supervisor aware of failures and allow for service actors to rejoin and recreate fallen services
-- Need to understand how to use BackOffSupervisor
-- Write tests to make sure that persisted state of the Followers actor is properly managed
-    - Guarantee that Persistent actor restarted on a failure case is automatically started
-    - When Persistent actor is properly killed (terminated) do not do an auto start (require the application start message)
+- Make sure the UserInfo has handling and production of properly Kill
+- Make sure that TokenGuardian removes service from list of services available when properly cleaned (maybe overzealous)
+- Fix TokenGuardianSpec Tests. Currently a lot of repetition on the tests.
 - Write the flow for get followers on a cycle and then publish those to whoever is interested (Events and likely actor on a schedule)
 - Update the Followers tests to use the stream with the followers instead of mutable state on the twitch client
 - Refactor twitch get followers (web sockets)

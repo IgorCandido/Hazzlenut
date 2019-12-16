@@ -13,7 +13,7 @@ import hazzlenut.util.ZIORuntime._
 object UserInfoInitializer {
   implicit final case object akkaUserInfoInitializer extends UserInfoInitializer[HazzleNutZIO] {
       override def initializeUserInfo(
-        propsF: Props => Props,
+        parent: ActorContext,
         tokenGuardian: ActorRef,
         tokenHolder: ActorRef
       )(implicit system: ActorSystem,
@@ -22,7 +22,7 @@ object UserInfoInitializer {
         httpClient: HttpClient[HazzleNutZIO],
         logProvider: LogProvider[HazzleNutZIO],
         monad: Monad[HazzleNutZIO]): ActorRef = {
-        system.actorOf(
+        parent.actorOf(
           UserInfo.props[HazzleNutZIO](tokenHolder)
         )
       }
@@ -42,7 +42,7 @@ object UserInfoInitializer {
 }
 
 trait UserInfoInitializer[F[_]] {
-  def initializeUserInfo(propsF: Props => Props, tokenGuardian: ActorRef, tokenHolder: ActorRef)(
+  def initializeUserInfo(parent: ActorContext, tokenGuardian: ActorRef, tokenHolder: ActorRef)(
     implicit system: ActorSystem,
     twitchClientHandler: TwitchClientHandler[F],
     twitchClient: TwitchClient[F],

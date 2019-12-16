@@ -9,10 +9,7 @@ import cats.implicits._
 import hazzlenut.handler.TwitchClientHandler
 import hazzlenut.handler.TwitchClientHandler.dsl.retrieveFollowers
 import hazzlenut.services.twitch.actor.Followers._
-import hazzlenut.services.twitch.actor.TokenGuardian.Message.{
-  RequireService,
-  ServiceProvide
-}
+import hazzlenut.services.twitch.actor.TokenGuardian.Message.{RequireService, ServiceProvide}
 import hazzlenut.services.twitch.actor.TokenGuardian.ServiceType
 import hazzlenut.services.twitch.actor.TokenHolder.ReplyAccessToken
 import hazzlenut.services.twitch.actor.UserInfo.{ProvideUser, RetrieveUser}
@@ -21,6 +18,7 @@ import hazzlenut.services.twitch.actor.helper.Executor
 import hazzlenut.services.twitch.actor.helper.Executor.dsl._
 import hazzlenut.services.twitch.actor.model.CommonMessages
 import hazzlenut.services.twitch.actor.model.CommonMessages.KillService
+import hazzlenut.services.twitch.actor.model.CommonMessages.SupervisorThrowables.ProperlyKilled
 import hazzlenut.services.twitch.adapters.AccessToken
 import hazzlenut.services.twitch.model.User
 import hazzlenut.util.{HttpClient, LogProvider, UnmarshallerEntiy}
@@ -91,7 +89,7 @@ class Followers[F[_]: Monad: TwitchClientHandler: TwitchClient: HttpClient: Unma
     case KillService =>
       persist(CursorCleaned) { _ => // Actor being reset cleans cursor
         cursorState = None
-        context.stop(self)
+        throw ProperlyKilled
       }
   }
 

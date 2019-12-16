@@ -1,7 +1,7 @@
 package hazzlenut.services.twitch.actor
 
-import akka.actor.SupervisorStrategy.Restart
-import akka.actor.{Actor, ActorRef, OneForOneStrategy, PoisonPill, Props, SupervisorStrategy}
+import akka.actor.SupervisorStrategy.{Restart, Stop}
+import akka.actor.{Actor, ActorContext, ActorRef, ActorSystem, OneForOneStrategy, PoisonPill, Props, SupervisorStrategy}
 import akka.pattern.{BackoffOpts, BackoffSupervisor}
 import cats.Monad
 import hazzlenut.errors.HazzlenutError
@@ -12,7 +12,8 @@ import hazzlenut.services.twitch.actor.adapter.TwitchClient
 import hazzlenut.services.twitch.actor.helper.Executor.dsl._
 import hazzlenut.services.twitch.actor.helper.{Executor, TokenHolderInitializer}
 import hazzlenut.services.twitch.actor.model.CommonMessages
-import hazzlenut.services.twitch.actor.model.CommonMessages.ApplicationStarted
+import hazzlenut.services.twitch.actor.model.CommonMessages.SupervisorThrowables.ProperlyKilled
+import hazzlenut.services.twitch.actor.model.CommonMessages.{ApplicationStarted, KillService}
 import hazzlenut.services.twitch.adapters.AccessToken
 import hazzlenut.util.{HttpClient, LogProvider}
 import log.effect.LogLevels
@@ -23,7 +24,7 @@ import scala.concurrent.duration._
 object TokenGuardian {
   val Name = "TokenGuardian"
 
-  type Initializer = (Props => Props, ActorRef, ActorRef) => ActorRef
+  type Initializer = (ActorContext, ActorRef, ActorRef) => ActorRef
 
   object Message {
     case object CantRenewToken
@@ -48,23 +49,6 @@ object TokenGuardian {
     tokenHolderInitializer: TokenHolderInitializer[F],
   ) =
     Props(new TokenGuardian(serviceInitializers))
-
-  val injectSupervisor: Props => Props = { childProps =>
-    BackoffSupervisor.props(
-      BackoffOpts
-        .onFailure(
-          childProps,
-          childName = "myEcho",
-          minBackoff = 30 milliseconds,
-          maxBackoff = 1 seconds,
-          randomFactor = 0.2 // adds 20% "noise" to vary the intervals slightly
-        )
-        .withSupervisorStrategy(OneForOneStrategy() {
-          case _: Exception =>
-            SupervisorStrategy.Restart // Dangerous to always restart for any exception
-        })
-    )
-  }
 }
 
 class TokenGuardian[F[_]: TwitchClientHandler: TwitchClient: HttpClient: LogProvider: Executor](
@@ -76,7 +60,8 @@ class TokenGuardian[F[_]: TwitchClientHandler: TwitchClient: HttpClient: LogProv
 
   override val supervisorStrategy =
     OneForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1 minute) {
-      case _ => Restart
+      case ProperlyKilled => Stop
+      case _              => Restart
     }
 
   override def receive: Receive = {
@@ -85,7 +70,7 @@ class TokenGuardian[F[_]: TwitchClientHandler: TwitchClient: HttpClient: LogProv
   }
 
   def poisonAllServices(services: Seq[Service]): Unit =
-    services.foreach(_.actorRef ! PoisonPill)
+    services.foreach(_.actorRef ! KillService)
 
   def initializeAllServices(
     tokenGuardian: ActorRef,
@@ -93,14 +78,7 @@ class TokenGuardian[F[_]: TwitchClientHandler: TwitchClient: HttpClient: LogProv
     serviceInitializers: Seq[ServiceInitializer]
   ): Seq[Service] =
     serviceInitializers.map { sI =>
-      Service(
-        sI.serviceType,
-        sI.initializer(
-          TokenGuardian.injectSupervisor,
-          tokenGuardian,
-          tokenHolder
-        )
-      )
+      Service(sI.serviceType, sI.initializer(context, tokenGuardian, tokenHolder))
     }
 
   def fulfillService(serviceType: ServiceType, services: Seq[Service]): Unit =

@@ -1,7 +1,8 @@
 package services.twitch
 
-import akka.actor.{ActorContext, ActorRef, ActorSystem, Props}
-import akka.testkit.{TestKit, TestProbe}
+import akka.actor.{Actor, ActorContext, ActorRef, ActorSystem, Props}
+import akka.testkit
+import akka.testkit.{TestActor, TestKit, TestProbe}
 import cats.Monad
 import cats.implicits._
 import hazzlenut.handler.{AuthenticationHandler, TwitchClientHandler}
@@ -12,7 +13,8 @@ import hazzlenut.services.twitch.actor.TokenHolder.AskAccessToken
 import hazzlenut.services.twitch.actor.adapter.TwitchClient
 import hazzlenut.services.twitch.actor.helper.{TokenHolderInitializer, UserInfoInitializer}
 import hazzlenut.services.twitch.actor.model.CommonMessages
-import hazzlenut.services.twitch.actor.model.CommonMessages.ApplicationStarted
+import hazzlenut.services.twitch.actor.model.CommonMessages.SupervisorThrowables.ProperlyKilled
+import hazzlenut.services.twitch.actor.model.CommonMessages.{ApplicationStarted, KillService}
 import hazzlenut.services.twitch.actor.{TokenGuardian, TokenHolder}
 import hazzlenut.services.twitch.adapters.AccessToken
 import hazzlenut.util.{HttpClient, LogProvider}
@@ -273,7 +275,7 @@ class TokenGuardianSpec
         var numberUserInfoInitialized = 0
 
         override def initializeUserInfo(
-          propf: Props => Props,
+          parent: ActorContext,
           tokenGuardian: ActorRef,
           tokenHolder: ActorRef
         )(implicit system: ActorSystem,
@@ -333,7 +335,7 @@ class TokenGuardianSpec
       implicit val userInfoInitalizer = new UserInfoInitializer[TestIO] {
         var numberUserInfoInitialized = 0
         override def initializeUserInfo(
-          propf: Props => Props,
+          parent: ActorContext,
           tokenGuardian: ActorRef,
           tokenHolder: ActorRef
         )(implicit context: ActorSystem,
@@ -362,6 +364,7 @@ class TokenGuardianSpec
       guardian ! ApplicationStarted
 
       guardian ! Authenticated(accessToken)
+      userInfoProbe.expectMsg(ApplicationStarted)
 
       awaitAssert({
         userInfoInitalizer.numberUserInfoInitialized should ===(1)
@@ -373,8 +376,71 @@ class TokenGuardianSpec
       watcher.watch(userInfoProbe.ref)
 
       guardian.tell(TokenGuardian.Message.CantRenewToken, tokenHolderProbe.ref)
-      watcher.expectTerminated(userInfoProbe.ref)
+      userInfoProbe.expectMsg(KillService)
 
+      succeed
+    }
+
+    "Kill the UserInfo when we it throws an exception" in {
+      val accessToken = AccessTokenGen.sample()
+
+      class DummyActor extends Actor {
+        override def receive: Receive = {
+          case "killProperly" => throw ProperlyKilled
+        }
+      }
+
+
+
+      implicit val userInfoInitalizer = new UserInfoInitializer[TestIO] {
+        var numberUserInfoInitialized = 0
+        var dummyActor: Option[ActorRef]= None
+        override def initializeUserInfo(
+                                         parent: ActorContext,
+                                         tokenGuardian: ActorRef,
+                                         tokenHolder: ActorRef
+                                       )(implicit context: ActorSystem,
+                                         twitchClientHandler: TwitchClientHandler[TestIO],
+                                         twitchClient: TwitchClient[TestIO],
+                                         httpClient: HttpClient[TestIO],
+                                         logProvider: LogProvider[TestIO],
+                                         monad: Monad[TestIO]): ActorRef = {
+          numberUserInfoInitialized += 1
+          dummyActor = parent.actorOf(Props(new DummyActor)).some
+          dummyActor.get
+        }
+      }
+      var authenticateUser = 0
+
+      implicit val authenticationHandler =
+        TestIO.authenticationHandlerWithValues(reAuthenticateParam = () => {
+          authenticateUser += 1
+
+          Either.right(Unit)
+        })
+
+      val guardian = system.actorOf(
+        TokenGuardian
+          .props[TestIO](Seq(UserInfoInitializer.initializer[TestIO]))
+      )
+      guardian ! ApplicationStarted
+
+      guardian ! Authenticated(accessToken)
+
+      awaitAssert({
+        userInfoInitalizer.numberUserInfoInitialized should ===(1)
+        authenticateUser should ===(1)
+      }, 200 millis)
+
+      val watcher = TestProbe()
+
+      val dummyActor = userInfoInitalizer.dummyActor.get
+
+      watcher.watch(dummyActor)
+
+      dummyActor ! "killProperly"
+
+      watcher.expectTerminated(dummyActor)
       succeed
     }
 

@@ -455,7 +455,7 @@ trait TestIOUserInfoInitializer {
 
   def userInfoInitializerWithActor(actorRefGenerator: UserInfoInitializerType) =
     new UserInfoInitializer[TestIO] {
-      override def initializeUserInfo(propf: Props => Props, tokenGuardian: ActorRef, tokenHolder: ActorRef)(
+      override def initializeUserInfo(parent: ActorContext, tokenGuardian: ActorRef, tokenHolder: ActorRef)(
         implicit context: ActorSystem,
         twitchClientHandler: TwitchClientHandler[TestIO],
         twitchClient: TwitchClient[TestIO],
