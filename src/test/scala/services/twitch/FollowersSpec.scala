@@ -47,7 +47,7 @@ object FollowersSpec {
 
     override val supervisorStrategy =
       OneForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1 minute) {
-        case ProperlyKilled => {
+        case _: ProperlyKilled => {
           properlyKilled = true
           Stop
         }

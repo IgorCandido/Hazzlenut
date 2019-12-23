@@ -17,6 +17,7 @@ import hazzlenut.util.{HttpClient, LogProvider, UnmarshallerEntiy}
 import log.effect.LogLevels.Debug
 import hazzlenut.services.twitch.actor.helper.Executor.dsl._
 import cats.implicits._
+import hazzlenut.services.twitch.actor.TokenGuardian.ServiceType
 import hazzlenut.services.twitch.actor.model.CommonMessages
 import hazzlenut.services.twitch.actor.model.CommonMessages.KillService
 import hazzlenut.services.twitch.actor.model.CommonMessages.SupervisorThrowables.ProperlyKilled
@@ -48,7 +49,7 @@ class UserInfo[F[_]: TwitchClientHandler: TwitchClient: HttpClient: Monad: Unmar
 
   def handleKillService: Receive = {
     case KillService =>
-      throw ProperlyKilled
+      throw ProperlyKilled(ServiceType.UserInfo)
   }
 
   def withDefaultHandling(receiveHandler: Receive): Receive =

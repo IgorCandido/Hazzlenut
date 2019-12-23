@@ -8,7 +8,7 @@ import cats.implicits._
 import hazzlenut.handler.{AuthenticationHandler, TwitchClientHandler}
 import hazzlenut.services.twitch._
 import hazzlenut.services.twitch.actor.TokenGuardian.Message.{Authenticated, RequireService, ServiceProvide}
-import hazzlenut.services.twitch.actor.TokenGuardian.ServiceInitializer
+import hazzlenut.services.twitch.actor.TokenGuardian.{ServiceInitializer, ServiceType}
 import hazzlenut.services.twitch.actor.TokenHolder.AskAccessToken
 import hazzlenut.services.twitch.actor.adapter.TwitchClient
 import hazzlenut.services.twitch.actor.helper.{TokenHolderInitializer, UserInfoInitializer}
@@ -386,7 +386,7 @@ class TokenGuardianSpec
 
       class DummyActor extends Actor {
         override def receive: Receive = {
-          case "killProperly" => throw ProperlyKilled
+          case "killProperly" => throw ProperlyKilled(ServiceType.UserInfo)
         }
       }
 

@@ -1,5 +1,7 @@
 package hazzlenut.services.twitch.actor.model
 
+import hazzlenut.services.twitch.actor.TokenGuardian.ServiceType
+
 trait CommonMessages
 
 object CommonMessages{
@@ -7,7 +9,7 @@ object CommonMessages{
   final case object KillService extends CommonMessages
 
   object SupervisorThrowables{
-    final case object ProperlyKilled extends Throwable {
+    final case class ProperlyKilled(serviceType: ServiceType) extends Throwable {
       override def getMessage() = "Actor properly terminated signaling supervisor"
     }
   }

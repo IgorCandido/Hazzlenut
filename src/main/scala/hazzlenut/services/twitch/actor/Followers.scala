@@ -89,7 +89,7 @@ class Followers[F[_]: Monad: TwitchClientHandler: TwitchClient: HttpClient: Unma
     case KillService =>
       persist(CursorCleaned) { _ => // Actor being reset cleans cursor
         cursorState = None
-        throw ProperlyKilled
+        throw ProperlyKilled(ServiceType.Followers)
       }
   }
 
