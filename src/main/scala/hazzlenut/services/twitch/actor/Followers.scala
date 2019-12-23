@@ -85,7 +85,7 @@ class Followers[F[_]: Monad: TwitchClientHandler: TwitchClient: HttpClient: Unma
   override val persistenceId: String = Followers.Name
   var cursorState: Option[String] = None
 
-  def handlePoisonPill: Receive = {
+  def handleKillService: Receive = {
     case KillService =>
       persist(CursorCleaned) { _ => // Actor being reset cleans cursor
         cursorState = None
@@ -94,7 +94,7 @@ class Followers[F[_]: Monad: TwitchClientHandler: TwitchClient: HttpClient: Unma
   }
 
   def withDefaultHandling(receiveHandler: Receive): Receive =
-    receiveHandler orElse handlePoisonPill
+    receiveHandler orElse handleKillService
 
   def fetchToken(userInfo: ActorRef, expiredAccessToken: Boolean = false) =
     fetchAccessToken(
@@ -194,7 +194,7 @@ class Followers[F[_]: Monad: TwitchClientHandler: TwitchClient: HttpClient: Unma
   }
 
   override def receiveRecover
-    : Receive = { // Fully aware that the actor will require multiple times the UserInfo service
+    : Receive = withDefaultHandling { // Fully aware that the actor will require multiple times the UserInfo service
     case CursorUpdated(cursorValue) => {
       cursorState = cursorValue.some
       context.become(bootStrap)

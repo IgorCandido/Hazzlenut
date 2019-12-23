@@ -1,5 +1,4 @@
 Work list:
-- Make sure the UserInfo has handling and production of properly Kill
 - Make sure that TokenGuardian removes service from list of services available when properly cleaned (maybe overzealous)
 - Fix TokenGuardianSpec Tests. Currently a lot of repetition on the tests.
 - Write the flow for get followers on a cycle and then publish those to whoever is interested (Events and likely actor on a schedule)

@@ -18,6 +18,8 @@ import log.effect.LogLevels.Debug
 import hazzlenut.services.twitch.actor.helper.Executor.dsl._
 import cats.implicits._
 import hazzlenut.services.twitch.actor.model.CommonMessages
+import hazzlenut.services.twitch.actor.model.CommonMessages.KillService
+import hazzlenut.services.twitch.actor.model.CommonMessages.SupervisorThrowables.ProperlyKilled
 
 object UserInfo {
   val Name = "UserInfo"
@@ -44,6 +46,14 @@ class UserInfo[F[_]: TwitchClientHandler: TwitchClient: HttpClient: Monad: Unmar
   def fetchToken(expiredAccessToken: Boolean = false) =
     fetchAccessToken(waitingForToken, tokenHolder, self, expiredAccessToken)
 
+  def handleKillService: Receive = {
+    case KillService =>
+      throw ProperlyKilled
+  }
+
+  def withDefaultHandling(receiveHandler: Receive): Receive =
+    receiveHandler orElse handleKillService
+
   def providingUser(user: User): Receive = {
     case RetrieveUser =>
       sender ! ProvideUser(user)
@@ -51,12 +61,12 @@ class UserInfo[F[_]: TwitchClientHandler: TwitchClient: HttpClient: Monad: Unmar
 
   def waitingForToken: Receive = {
     case ReplyAccessToken(accessToken) =>
-      context.become(waitingForUser)
+      context.become(withDefaultHandling(waitingForUser))
       retrieveUser(accessToken) pipeTo self
   }
 
   def waitingForUser: Receive = {
-    case user: User => context.become(providingUser(user))
+    case user: User => context.become(withDefaultHandling(providingUser(user)))
     case Status.Failure(_: UnableToAuthenticate.type) => // What to do when failure on getting User
       LogProvider.unsafeLogWithAction[F](
         UserInfo.Name,
@@ -76,7 +86,7 @@ class UserInfo[F[_]: TwitchClientHandler: TwitchClient: HttpClient: Monad: Unmar
     }
   }
 
-  override def receive: Receive = {
+  override def receive: Receive = withDefaultHandling {
     case CommonMessages.ApplicationStarted =>
       fetchToken()
   }
